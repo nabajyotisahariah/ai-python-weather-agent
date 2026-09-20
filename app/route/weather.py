@@ -2,23 +2,29 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
-    WeatherService
 )
+from app.services.interface.weather_service_interface import WeatherServiceInterface
+from app.services.weather_service import WeatherService
 from app.schema.weather import WeatherRequest, WeatherResponse, CrewAIWeatherResponse
 #from app.utils.logger import setup_logging
 
 router = APIRouter()
-weather_service = WeatherService()
+weather_service: WeatherServiceInterface = WeatherService()
 #logger = setup_logging()
+
+
+def get_weather_service() -> WeatherServiceInterface:
+    return weather_service
 
 @router.get("/weather")
 async def get_current_weather_route(
     request: WeatherRequest = Depends(),
+    service: WeatherServiceInterface = Depends(get_weather_service),
 ) -> WeatherResponse:
     """Return the current weather for a city."""
     try:
         print("Fetching current weather for city: %s", request.city.strip())
-        return await weather_service.get_current_weather(request.city.strip())
+        return await service.get_current_weather(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
@@ -28,11 +34,12 @@ async def get_current_weather_route(
 @router.get("/weather/crewai")
 async def get_crewai_weather_route(
     request: WeatherRequest = Depends(),
+    service: WeatherServiceInterface = Depends(get_weather_service),
 ) -> CrewAIWeatherResponse:
     """Return a CrewAI-generated weather summary for a city."""
     try:
         print("Fetching CrewAI weather report for city: %s", request.city.strip())
-        return await weather_service.get_llm_weather_report(request.city.strip())
+        return await service.get_llm_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
