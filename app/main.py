@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.route import health, weather
 import logging
 from app.utils.logger import setup_logging
 from app.config import settings
 
-# Setup structured logging
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging()
+logger.info("Starting Weather Assistant API")
+
+from app.route import health, weather
 
 app = FastAPI(
     title="Weather Assistant API",
@@ -24,9 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logger.info(f"Initializing API routes")
-logger.info(f"Environment: {settings.environment}")
-logger.info(f"OpenAI Model: {settings.openai_api_model}")
+logger.info("Initializing API routes")
+logger.info("Environment: %s", settings.environment)
+logger.info("OpenAI Model: %s", settings.openai_api_model)
 
 # Include Routers
 app.include_router(weather.router, prefix="/api/v1", tags=["Weather"])

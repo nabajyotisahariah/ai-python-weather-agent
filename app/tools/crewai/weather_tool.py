@@ -1,5 +1,6 @@
 import requests
 from crewai.tools import tool
+from app.config import settings
 
 
 @tool("get_weather")
@@ -8,9 +9,9 @@ def get_weather(city: str) -> str:
     Get the current weather information for a city.
     """
 
-    url = f"https://wttr.in/{city}?format=j1"
+    url = f"{settings.WEATHER_API_URL}/{city}?format=j1"
 
-    response = requests.get(url, timeout=10)
+    response = requests.get(url, timeout=settings.WEATHER_TIMEOUT_SECONDS)
     response.raise_for_status()
 
     data = response.json()
