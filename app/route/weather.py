@@ -6,7 +6,7 @@ from app.services.weather_service import (
 )
 from app.services.interface.weather_service_interface import WeatherServiceInterface
 from app.services.weather_service import WeatherService
-from app.schema.weather import WeatherRequest, WeatherResponse, CrewAIWeatherResponse
+from app.schema.weather import AgentResponse, WeatherRequest, WeatherResponse
 import logging
 
 router = APIRouter()
@@ -18,10 +18,10 @@ def get_weather_service() -> WeatherServiceInterface:
     return weather_service
 
 
-def assistant_error_response(message: str = "Weather assistant unavailable") -> JSONResponse:
+def assistant_error_response() -> JSONResponse:
     return JSONResponse(
         status_code=502,
-        content={"status": "fail", "message": message},
+        content={"status": "fail", "message": "Weather assistant unavailable"},
     )
 
 @router.get("/weather")
@@ -43,15 +43,15 @@ async def get_current_weather_route(
 async def get_crewai_weather_route(
     request: WeatherRequest = Depends(),
     service: WeatherServiceInterface = Depends(get_weather_service),
-) -> CrewAIWeatherResponse:
+) -> AgentResponse:
     """Return a CrewAI-generated weather summary for a city."""
     try:
         logger.info("Fetching CrewAI weather report for city: %s", request.city.strip())
         return await service.get_crewai_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError as exc:
-        return assistant_error_response(str(exc))
+    except WeatherProviderError:
+        return assistant_error_response()
     except Exception as exc:
         return assistant_error_response()
 
@@ -59,15 +59,15 @@ async def get_crewai_weather_route(
 async def get_opengen_weather_route(
     request: WeatherRequest = Depends(),
     service: WeatherServiceInterface = Depends(get_weather_service),
-) -> CrewAIWeatherResponse:
+) -> AgentResponse:
     """Return a CrewAI-generated weather summary for a city."""
     try:
         print("Fetching OpenGen weather report for city: %s", request.city.strip())
         return await service.get_opengen_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError as exc:
-        return assistant_error_response(str(exc))
+    except WeatherProviderError:
+        return assistant_error_response()
     except Exception as exc:
         return assistant_error_response()
 
@@ -75,15 +75,15 @@ async def get_opengen_weather_route(
 async def get_langgraph_weather_route(
     request: WeatherRequest = Depends(),
     service: WeatherServiceInterface = Depends(get_weather_service),
-) -> CrewAIWeatherResponse:
+) -> AgentResponse:
     """Return a LangGraph-generated weather summary for a city."""
     try:
         logger.info("Fetching LangGraph weather report for city: %s", request.city.strip())
         return await service.get_langgraph_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError as exc:
-        return assistant_error_response(str(exc))
+    except WeatherProviderError:
+        return assistant_error_response()
     except Exception as exc:
         return assistant_error_response()
 
@@ -91,15 +91,15 @@ async def get_langgraph_weather_route(
 async def get_autogen_weather_route(
     request: WeatherRequest = Depends(),
     service: WeatherServiceInterface = Depends(get_weather_service),
-) -> CrewAIWeatherResponse:
+) -> AgentResponse:
     """Return an AutoGen-generated weather summary for a city."""
     try:
         logger.info("Fetching AutoGen weather report for city: %s", request.city.strip())
         return await service.get_autogen_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError as exc:
-        return assistant_error_response(str(exc))
+    except WeatherProviderError:
+        return assistant_error_response()
     except Exception as exc:
         return assistant_error_response()
 
@@ -108,14 +108,14 @@ async def get_autogen_weather_route(
 async def get_google_adk_weather_route(
     request: WeatherRequest = Depends(),
     service: WeatherServiceInterface = Depends(get_weather_service),
-) -> CrewAIWeatherResponse:
+) -> AgentResponse:
     """Return an Google ADK-generated weather summary for a city."""
     try:
         logger.info("Fetching Google ADK weather report for city: %s", request.city.strip())
         return await service.get_google_adk_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError as exc:
-        return assistant_error_response(str(exc))
+    except WeatherProviderError:
+        return assistant_error_response()
     except Exception as exc:
         return assistant_error_response()

@@ -1,4 +1,6 @@
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 class WeatherRequest(BaseModel):
@@ -14,6 +16,6 @@ class WeatherResponse(BaseModel):
     wind_speed: str | int | float
 
 
-class CrewAIWeatherResponse(BaseModel):
-    status: str
+class AgentResponse(BaseModel):
+    status: Literal["ok", "fail"]
     message: str
