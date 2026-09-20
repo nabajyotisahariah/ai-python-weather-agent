@@ -101,4 +101,20 @@ class WeatherService(WeatherServiceInterface):
         return {"status": "ok", "message": str(result)}
 
 
+async def get_langgraph_weather_report(self, city: str) -> dict[str, str]:
+    """Run the LangGraph weather agent without blocking the API event loop."""
+    try:
+        logger.info("Building LangGraph weather crew for city: %s", city)
+        weather_crew = build_weather_crew(city)
+        result = await asyncio.to_thread(
+            weather_crew.kickoff,
+            inputs={"city": city},
+        )
+    except Exception as exc:
+        raise WeatherProviderError("Weather assistant unavailable") from exc
+
+    logger.info("LLM weather report for city: %s", city)
+    return {"status": "ok", "message": str(result)}
+
+
 
