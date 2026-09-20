@@ -70,13 +70,17 @@ class WeatherService:
         )
         object.__setattr__(self, "weather_crew", weather_crew)
 
-    async def get_llm_weather_report(self, city: str) -> str:
+    async def get_llm_weather_report(self, city: str) -> dict[str, str]:
         """Run the CrewAI weather agent without blocking the API event loop."""
-        result = await asyncio.to_thread(
-            self.weather_crew.kickoff,
-            inputs={"city": city},
-        )
-        return str(result)
+        try:
+            result = await asyncio.to_thread(
+                self.weather_crew.kickoff,
+                inputs={"city": city},
+            )
+        except Exception as exc:
+            raise WeatherProviderError("Weather assistant unavailable") from exc
+
+        return {"status": "ok", "message": str(result)}
 
     async def get_current_weather(self, city: str) -> dict[str, str | int | float]:
         city = city.strip()

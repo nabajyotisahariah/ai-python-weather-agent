@@ -19,6 +19,11 @@ class WeatherResponse(BaseModel):
     wind_speed: str | int | float
 
 
+class CrewAIWeatherResponse(BaseModel):
+    status: str
+    message: str
+
+
 @router.get("/weather")
 async def get_current_weather_route(
     city: str = Query(..., min_length=1, description="City to get weather for"),
@@ -35,7 +40,7 @@ async def get_current_weather_route(
 @router.get("/weather/crewai")
 async def get_crewai_weather_route(
     city: str = Query(..., min_length=1, description="City to get weather for"),
-) -> str:
+) -> CrewAIWeatherResponse:
     """Return a CrewAI-generated weather summary for a city."""
     try:
         return await weather_service.get_llm_weather_report(city.strip())
@@ -43,3 +48,5 @@ async def get_crewai_weather_route(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Weather assistant unavailable") from exc
