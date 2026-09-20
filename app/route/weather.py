@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
-
 from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
     WeatherService
 )
 from app.schema.weather import WeatherRequest, WeatherResponse, CrewAIWeatherResponse
+import logging
 
 router = APIRouter()
 weather_service = WeatherService()
+
+logger = logging.getLogger(__name__)
 
 @router.get("/weather")
 async def get_current_weather_route(
@@ -16,6 +18,7 @@ async def get_current_weather_route(
 ) -> WeatherResponse:
     """Return the current weather for a city."""
     try:
+        logger.info(f"Fetching current weather for city: {request.city.strip()}")
         return await weather_service.get_current_weather(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -29,6 +32,7 @@ async def get_crewai_weather_route(
 ) -> CrewAIWeatherResponse:
     """Return a CrewAI-generated weather summary for a city."""
     try:
+        logger.info(f"Fetching CrewAI weather report for city: {request.city.strip()}")
         return await weather_service.get_llm_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -7,7 +7,8 @@ def setup_logging():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout)
-        ]
+        ],
+        force=True,
     )
     
     # Silence chatty third-party loggers if necessary

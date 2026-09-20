@@ -7,7 +7,10 @@ import httpx
 from dotenv import load_dotenv
 
 from app.agents.crewai import build_weather_crew
+from app.services.interface.weather_service_interface import WeatherServiceInterface
+import logging
 
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -24,8 +27,7 @@ class WeatherProviderError(WeatherServiceError):
     """The weather provider could not return a valid response."""
 
 
-#@dataclass(frozen=True)
-class WeatherService:
+class WeatherService(WeatherServiceInterface):
     base_url: str = os.getenv("WEATHER_API_URL", "https://wttr.in")
     timeout_seconds: float = float(os.getenv("WEATHER_TIMEOUT_SECONDS", "10"))
 
@@ -35,6 +37,7 @@ class WeatherService:
     async def get_llm_weather_report(self, city: str) -> dict[str, str]:
         """Run the CrewAI weather agent without blocking the API event loop."""
         try:
+            logger.info(f"Building CrewAI weather crew for city: {city}")
             weather_crew = build_weather_crew(city)
             result = await asyncio.to_thread(
                 weather_crew.kickoff,
@@ -43,6 +46,7 @@ class WeatherService:
         except Exception as exc:
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
+        logger.info(f"LLM weather report for city: {city}")
         return {"status": "ok", "message": str(result)}
 
     async def get_current_weather(self, city: str) -> dict[str, str | int | float]:
@@ -79,4 +83,3 @@ class WeatherService:
             raise WeatherProviderError("Weather service returned invalid data") from exc
 
 
-weather_service = WeatherService()
