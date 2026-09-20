@@ -16,7 +16,8 @@ A FastAPI service that retrieves current weather data from [wttr.in](https://wtt
 ## Requirements
 
 - Python 3.11 or newer
-- An OpenAI API key for the CrewAI endpoint
+- An OpenAI API key for the CrewAI, LangGraph, and AutoGen endpoints
+- A Google API key for the Google ADK endpoint
 
 ## Setup
 
@@ -44,6 +45,8 @@ Update `.env` with your OpenAI API key:
 ```env
 OPENAI_API_KEY=your-api-key
 OPENAI_API_MODEL=gpt-4o-mini
+GOOGLE_API_KEY=your-google-api-key
+GOOGLE_ADK_MODEL=gemini-2.0-flash
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
 ```
@@ -149,11 +152,23 @@ PowerShell example:
 Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=delhi"
 ```
 
+### Google ADK weather summary
+
+```http
+GET /api/v1/weather/google-adk?city=delhi
+```
+
+PowerShell example:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/google-adk?city=delhi"
+```
+
 ## Project structure
 
 ```text
 app/
-├── agents/              # CrewAI, LangGraph, and AutoGen agents
+├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Service interface and weather implementation

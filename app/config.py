@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     # OpenAI Settings
     openai_api_key: str | None = None
     openai_api_model: str = "gpt-4o-mini"
+    google_api_key: str | None = None
+    google_adk_model: str = "gemini-2.0-flash"
 
     WEATHER_API_URL: str = "https://wttr.in"
     WEATHER_TIMEOUT_SECONDS: float = 10.0

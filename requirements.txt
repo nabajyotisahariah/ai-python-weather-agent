@@ -7,3 +7,4 @@ langgraph
 langchain-openai
 autogen-agentchat
 autogen-ext[openai]
+google-adk

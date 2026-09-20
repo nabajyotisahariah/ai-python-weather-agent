@@ -1,6 +1,13 @@
+import sys
+from pathlib import Path
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import uvicorn
 from app.utils.logger import setup_logging
 from app.config import settings
 
@@ -31,3 +38,7 @@ logging.info("OpenAI Model: %s", settings.openai_api_model)
 # Include Routers
 app.include_router(weather.router, prefix="/api/v1", tags=["Weather"])
 app.include_router(health.router, prefix="/api/v1", tags=["System"])
+
+
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000)

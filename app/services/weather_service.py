@@ -9,6 +9,7 @@ import httpx
 from app.agents.crewai import build_weather_crew
 from app.agents.langgraph import run_weather_agent as run_langgraph_weather_agent
 from app.agents.autogen import run_weather_agent as run_autogen_weather_agent
+from app.agents.google_adk import run_weather_agent as run_google_adk_weather_agent
 from app.services.interface.weather_service_interface import WeatherServiceInterface
 from app.config import settings
 import logging
@@ -129,8 +130,7 @@ class WeatherService(WeatherServiceInterface):
         """Run the Google ADK weather agent without blocking the API event loop."""
         try:
             logger.info("Running Google ADK weather agent for city: %s", city)
-            # Placeholder for actual Google ADK integration
-            result = f"Google ADK weather report for {city} is currently unavailable."
+            result = await asyncio.to_thread(run_google_adk_weather_agent, city)
         except Exception as exc:
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
