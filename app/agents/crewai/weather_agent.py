@@ -3,7 +3,7 @@ from crewai import Agent, Crew, Process, Task
 from app.tools.crewai.weather_tool import get_weather
 
 
-def build_weather_crew() -> Crew:
+def build_weather_crew(city: str) -> Crew:
     weather_agent = Agent(
         role="Weather Assistant",
         goal="Provide accurate and easy-to-understand weather information",

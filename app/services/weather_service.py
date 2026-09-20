@@ -24,19 +24,20 @@ class WeatherProviderError(WeatherServiceError):
     """The weather provider could not return a valid response."""
 
 
-@dataclass(frozen=True)
+#@dataclass(frozen=True)
 class WeatherService:
     base_url: str = os.getenv("WEATHER_API_URL", "https://wttr.in")
     timeout_seconds: float = float(os.getenv("WEATHER_TIMEOUT_SECONDS", "10"))
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "weather_crew", build_weather_crew())
+    #def __post_init__(self) -> None:
+    #    object.__setattr__(self, "weather_crew", build_weather_crew())
 
     async def get_llm_weather_report(self, city: str) -> dict[str, str]:
         """Run the CrewAI weather agent without blocking the API event loop."""
         try:
+            weather_crew = build_weather_crew(city)
             result = await asyncio.to_thread(
-                self.weather_crew.kickoff,
+                weather_crew.kickoff,
                 inputs={"city": city},
             )
         except Exception as exc:
