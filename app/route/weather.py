@@ -51,8 +51,10 @@ async def get_crewai_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
+        logger.warning("CrewAI weather provider failed for city: %s", request.city.strip())
         return assistant_error_response()
     except Exception as exc:
+        logger.exception("Unexpected CrewAI weather error for city: %s", request.city.strip())
         return assistant_error_response()
 
 @router.get("/weather/opengen")
@@ -62,13 +64,15 @@ async def get_opengen_weather_route(
 ) -> AgentResponse:
     """Return a CrewAI-generated weather summary for a city."""
     try:
-        print("Fetching OpenGen weather report for city: %s", request.city.strip())
+        logger.info("Fetching OpenGen weather report for city: %s", request.city.strip())
         return await service.get_opengen_weather_report(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
+        logger.warning("OpenGen weather provider failed for city: %s", request.city.strip())
         return assistant_error_response()
     except Exception as exc:
+        logger.exception("Unexpected OpenGen weather error for city: %s", request.city.strip())
         return assistant_error_response()
 
 @router.get("/weather/langgraph")
@@ -83,8 +87,10 @@ async def get_langgraph_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
+        logger.warning("LangGraph weather provider failed for city: %s", request.city.strip())
         return assistant_error_response()
     except Exception as exc:
+        logger.exception("Unexpected LangGraph weather error for city: %s", request.city.strip())
         return assistant_error_response()
 
 @router.get("/weather/autogen")
@@ -99,8 +105,10 @@ async def get_autogen_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
+        logger.warning("AutoGen weather provider failed for city: %s", request.city.strip())
         return assistant_error_response()
     except Exception as exc:
+        logger.exception("Unexpected AutoGen weather error for city: %s", request.city.strip())
         return assistant_error_response()
 
 
@@ -116,6 +124,8 @@ async def get_google_adk_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
+        logger.warning("Google ADK weather provider failed for city: %s", request.city.strip())
         return assistant_error_response()
     except Exception as exc:
+        logger.exception("Unexpected Google ADK weather error for city: %s", request.city.strip())
         return assistant_error_response()
