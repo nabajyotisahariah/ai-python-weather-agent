@@ -1,6 +1,6 @@
 # Weather Assistant API
 
-A FastAPI service that retrieves current weather data from [wttr.in](https://wttr.in) and can produce natural-language weather summaries through CrewAI, LangGraph, or AutoGen.
+A FastAPI service that retrieves current weather data from [wttr.in](https://wttr.in) and can produce natural-language weather summaries through CrewAI, LangGraph, AutoGen, or Google ADK.
 
 ## Features
 
@@ -8,6 +8,7 @@ A FastAPI service that retrieves current weather data from [wttr.in](https://wtt
 - CrewAI-generated weather summaries
 - LangGraph-generated weather summaries
 - AutoGen-generated weather summaries
+- Google ADK-generated weather summaries
 - Health-check endpoint
 - Pydantic request and response schemas
 - CORS enabled for API clients
@@ -40,7 +41,7 @@ Create a `.env` file from the example:
 Copy-Item .env.example .env
 ```
 
-Update `.env` with your OpenAI API key:
+Update `.env` with your model provider keys and weather settings:
 
 ```env
 OPENAI_API_KEY=your-api-key
@@ -53,10 +54,16 @@ WEATHER_TIMEOUT_SECONDS=10
 
 ## Run the API
 
-Start the development server:
+Start the development server with Uvicorn:
 
 ```powershell
 uvicorn app.main:app --reload
+```
+
+You can also start the API directly:
+
+```powershell
+python app/main.py
 ```
 
 The API is available at `http://localhost:8000`.
@@ -172,7 +179,7 @@ app/
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Service interface and weather implementation
-├── tools/               # CrewAI and LangGraph weather tools
+├── tools/               # Weather tools shared by the agent integrations
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
 └── utils/               # Logging helpers

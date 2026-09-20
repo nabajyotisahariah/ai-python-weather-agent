@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
@@ -15,6 +16,13 @@ logger = logging.getLogger(__name__)
 
 def get_weather_service() -> WeatherServiceInterface:
     return weather_service
+
+
+def assistant_error_response(message: str = "Weather assistant unavailable") -> JSONResponse:
+    return JSONResponse(
+        status_code=502,
+        content={"status": "fail", "message": message},
+    )
 
 @router.get("/weather")
 async def get_current_weather_route(
@@ -43,9 +51,9 @@ async def get_crewai_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return assistant_error_response(str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Weather assistant unavailable") from exc
+        return assistant_error_response()
 
 @router.get("/weather/opengen")
 async def get_opengen_weather_route(
@@ -59,9 +67,9 @@ async def get_opengen_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return assistant_error_response(str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Weather assistant unavailable") from exc
+        return assistant_error_response()
 
 @router.get("/weather/langgraph")
 async def get_langgraph_weather_route(
@@ -75,9 +83,9 @@ async def get_langgraph_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return assistant_error_response(str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Weather assistant unavailable") from exc
+        return assistant_error_response()
 
 @router.get("/weather/autogen")
 async def get_autogen_weather_route(
@@ -91,9 +99,9 @@ async def get_autogen_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return assistant_error_response(str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Weather assistant unavailable") from exc
+        return assistant_error_response()
 
 
 @router.get("/weather/google-adk")
@@ -108,6 +116,6 @@ async def get_google_adk_weather_route(
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return assistant_error_response(str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Weather assistant unavailable") from exc
+        return assistant_error_response()
