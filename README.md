@@ -73,6 +73,27 @@ Interactive documentation:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
+## Run tests
+
+Activate the virtual environment and run the test suite from the project root:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pytest -q
+```
+
+Run tests with detailed output:
+
+```powershell
+python -m pytest -v
+```
+
+Run a specific test:
+
+```powershell
+python -m pytest tests/test_api.py::test_autogen_weather_returns_agent_response -q
+```
+
 ## Endpoints
 
 ### Health check

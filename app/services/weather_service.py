@@ -12,6 +12,7 @@ from app.agents.autogen import run_weather_agent as run_autogen_weather_agent
 from app.agents.google_adk import run_weather_agent as run_google_adk_weather_agent
 from app.services.interface.weather_service_interface import WeatherServiceInterface
 from app.config import settings
+from app.schema.weather import AgentResponse
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ class WeatherService(WeatherServiceInterface):
         except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
             raise WeatherProviderError("Weather service returned invalid data") from exc
 
-    async def get_crewai_weather_report(self, city: str) -> dict[str, str]:
+    async def get_crewai_weather_report(self, city: str) -> AgentResponse:
         """Run the CrewAI weather agent without blocking the API event loop."""
         try:
             logger.info("Building CrewAI weather crew for city: %s", city)
@@ -88,7 +89,7 @@ class WeatherService(WeatherServiceInterface):
         logger.info("LLM weather report for city: %s", city)
         return {"status": "ok", "message": str(result)}
 
-    async def get_opengen_weather_report(self, city: str) -> dict[str, str]:
+    async def get_opengen_weather_report(self, city: str) -> AgentResponse:
         """Run the CrewAI weather agent without blocking the API event loop."""
         try:
             logger.info("Building CrewAI weather crew for city: %s", city)
@@ -103,7 +104,7 @@ class WeatherService(WeatherServiceInterface):
         logger.info("LLM weather report for city: %s", city)
         return {"status": "ok", "message": str(result)}
 
-    async def get_langgraph_weather_report(self, city: str) -> dict[str, str]:
+    async def get_langgraph_weather_report(self, city: str) -> AgentResponse:
         """Run the LangGraph weather agent without blocking the API event loop."""
         try:
             logger.info("Running LangGraph weather agent for city: %s", city)
@@ -114,7 +115,7 @@ class WeatherService(WeatherServiceInterface):
         logger.info("LangGraph weather report generated for city: %s", city)
         return {"status": "ok", "message": result}
 
-    async def get_autogen_weather_report(self, city: str) -> dict[str, str]:
+    async def get_autogen_weather_report(self, city: str) -> AgentResponse:
         """Run the AutoGen weather agent without blocking the API event loop."""
         try:
             logger.info("Running AutoGen weather agent for city: %s", city)
@@ -126,7 +127,7 @@ class WeatherService(WeatherServiceInterface):
         return {"status": "ok", "message": result}
 
 
-    async def get_google_adk_weather_report(self, city: str) -> dict[str, str]:
+    async def get_google_adk_weather_report(self, city: str) -> AgentResponse:
         """Run the Google ADK weather agent without blocking the API event loop."""
         try:
             logger.info("Running Google ADK weather agent for city: %s", city)
