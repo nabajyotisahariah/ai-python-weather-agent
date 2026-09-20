@@ -7,7 +7,8 @@ import httpx
 #from dotenv import load_dotenv
 
 from app.agents.crewai import build_weather_crew
-from app.agents.langgraph import run_weather_agent
+from app.agents.langgraph import run_weather_agent as run_langgraph_weather_agent
+from app.agents.autogen import run_weather_agent as run_autogen_weather_agent
 from app.services.interface.weather_service_interface import WeatherServiceInterface
 from app.config import settings
 import logging
@@ -105,10 +106,21 @@ class WeatherService(WeatherServiceInterface):
         """Run the LangGraph weather agent without blocking the API event loop."""
         try:
             logger.info("Running LangGraph weather agent for city: %s", city)
-            result = await asyncio.to_thread(run_weather_agent, city)
+            result = await asyncio.to_thread(run_langgraph_weather_agent, city)
         except Exception as exc:
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
         logger.info("LangGraph weather report generated for city: %s", city)
+        return {"status": "ok", "message": result}
+
+    async def get_autogen_weather_report(self, city: str) -> dict[str, str]:
+        """Run the AutoGen weather agent without blocking the API event loop."""
+        try:
+            logger.info("Running AutoGen weather agent for city: %s", city)
+            result = await asyncio.to_thread(run_autogen_weather_agent, city)
+        except Exception as exc:
+            raise WeatherProviderError("Weather assistant unavailable") from exc
+
+        logger.info("AutoGen weather report generated for city: %s", city)
         return {"status": "ok", "message": result}
 

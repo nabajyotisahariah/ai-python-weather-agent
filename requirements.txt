@@ -5,3 +5,5 @@ fastapi
 uvicorn
 langgraph
 langchain-openai
+autogen-agentchat
+autogen-ext[openai]
