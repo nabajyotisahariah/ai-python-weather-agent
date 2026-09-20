@@ -1,11 +1,12 @@
 # Weather Assistant API
 
-A FastAPI service that retrieves current weather data from [wttr.in](https://wttr.in) and can produce a natural-language weather summary through CrewAI.
+A FastAPI service that retrieves current weather data from [wttr.in](https://wttr.in) and can produce natural-language weather summaries through CrewAI or LangGraph.
 
 ## Features
 
 - Current weather data for a city
 - CrewAI-generated weather summaries
+- LangGraph-generated weather summaries
 - Health-check endpoint
 - Pydantic request and response schemas
 - CORS enabled for API clients
@@ -123,15 +124,27 @@ PowerShell example:
 Invoke-RestMethod "http://localhost:8000/api/v1/weather/crewai?city=delhi"
 ```
 
+### LangGraph weather summary
+
+```http
+GET /api/v1/weather/langgraph?city=delhi
+```
+
+PowerShell example:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/langgraph?city=delhi"
+```
+
 ## Project structure
 
 ```text
 app/
-├── agents/crewai/       # CrewAI agent and crew factory
+├── agents/              # CrewAI and LangGraph agents
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Service interface and weather implementation
-├── tools/crewai/        # CrewAI weather tool
+├── tools/               # CrewAI and LangGraph weather tools
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
 └── utils/               # Logging helpers

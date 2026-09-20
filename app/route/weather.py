@@ -68,7 +68,7 @@ async def get_langgraph_weather_route(
     request: WeatherRequest = Depends(),
     service: WeatherServiceInterface = Depends(get_weather_service),
 ) -> CrewAIWeatherResponse:
-    """Return a CrewAI-generated weather summary for a city."""
+    """Return a LangGraph-generated weather summary for a city."""
     try:
         logger.info("Fetching LangGraph weather report for city: %s", request.city.strip())
         return await service.get_langgraph_weather_report(request.city.strip())

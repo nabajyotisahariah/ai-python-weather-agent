@@ -7,6 +7,7 @@ import httpx
 #from dotenv import load_dotenv
 
 from app.agents.crewai import build_weather_crew
+from app.agents.langgraph import run_weather_agent
 from app.services.interface.weather_service_interface import WeatherServiceInterface
 from app.config import settings
 import logging
@@ -100,21 +101,14 @@ class WeatherService(WeatherServiceInterface):
         logger.info("LLM weather report for city: %s", city)
         return {"status": "ok", "message": str(result)}
 
+    async def get_langgraph_weather_report(self, city: str) -> dict[str, str]:
+        """Run the LangGraph weather agent without blocking the API event loop."""
+        try:
+            logger.info("Running LangGraph weather agent for city: %s", city)
+            result = await asyncio.to_thread(run_weather_agent, city)
+        except Exception as exc:
+            raise WeatherProviderError("Weather assistant unavailable") from exc
 
-async def get_langgraph_weather_report(self, city: str) -> dict[str, str]:
-    """Run the LangGraph weather agent without blocking the API event loop."""
-    try:
-        logger.info("Building LangGraph weather crew for city: %s", city)
-        weather_crew = build_weather_crew(city)
-        result = await asyncio.to_thread(
-            weather_crew.kickoff,
-            inputs={"city": city},
-        )
-    except Exception as exc:
-        raise WeatherProviderError("Weather assistant unavailable") from exc
-
-    logger.info("LLM weather report for city: %s", city)
-    return {"status": "ok", "message": str(result)}
-
-
+        logger.info("LangGraph weather report generated for city: %s", city)
+        return {"status": "ok", "message": result}
 

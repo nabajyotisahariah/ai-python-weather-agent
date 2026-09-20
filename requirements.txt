@@ -3,3 +3,5 @@ requests
 python-dotenv
 fastapi
 uvicorn
+langgraph
+langchain-openai
