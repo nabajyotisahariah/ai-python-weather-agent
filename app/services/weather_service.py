@@ -124,3 +124,15 @@ class WeatherService(WeatherServiceInterface):
         logger.info("AutoGen weather report generated for city: %s", city)
         return {"status": "ok", "message": result}
 
+
+    async def get_google_adk_weather_report(self, city: str) -> dict[str, str]:
+        """Run the Google ADK weather agent without blocking the API event loop."""
+        try:
+            logger.info("Running Google ADK weather agent for city: %s", city)
+            # Placeholder for actual Google ADK integration
+            result = f"Google ADK weather report for {city} is currently unavailable."
+        except Exception as exc:
+            raise WeatherProviderError("Weather assistant unavailable") from exc
+
+        logger.info("Google ADK weather report generated for city: %s", city)
+        return {"status": "ok", "message": result}

@@ -27,3 +27,8 @@ class WeatherServiceInterface(ABC):
     async def get_autogen_weather_report(self, city: str) -> dict[str, str]:
             """Return an AutoGen-generated weather report for a city."""
             raise NotImplementedError
+
+    @abstractmethod
+    async def get_google_adk_weather_report(self, city: str) -> dict[str, str]:
+        """Return an Google ADK-generated weather report for a city."""
+        raise NotImplementedError
