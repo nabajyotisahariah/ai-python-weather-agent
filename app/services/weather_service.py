@@ -9,9 +9,9 @@ import httpx
 from app.agents.crewai import build_weather_crew
 from app.services.interface.weather_service_interface import WeatherServiceInterface
 from app.config import settings
-#import logging
+import logging
 
-#logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 #load_dotenv()
 
@@ -35,20 +35,7 @@ class WeatherService(WeatherServiceInterface):
     #def __post_init__(self) -> None:
     #    object.__setattr__(self, "weather_crew", build_weather_crew())
 
-    async def get_llm_weather_report(self, city: str) -> dict[str, str]:
-        """Run the CrewAI weather agent without blocking the API event loop."""
-        try:
-            print("Building CrewAI weather crew for city: %s", city)
-            weather_crew = build_weather_crew(city)
-            result = await asyncio.to_thread(
-                weather_crew.kickoff,
-                inputs={"city": city},
-            )
-        except Exception as exc:
-            raise WeatherProviderError("Weather assistant unavailable") from exc
-
-        print("LLM weather report for city: %s", city)
-        return {"status": "ok", "message": str(result)}
+    
 
     async def get_current_weather(self, city: str) -> dict[str, str | int | float]:
         city = city.strip()
@@ -82,5 +69,36 @@ class WeatherService(WeatherServiceInterface):
             }
         except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
             raise WeatherProviderError("Weather service returned invalid data") from exc
+
+    async def get_crewai_weather_report(self, city: str) -> dict[str, str]:
+        """Run the CrewAI weather agent without blocking the API event loop."""
+        try:
+            logger.info("Building CrewAI weather crew for city: %s", city)
+            weather_crew = build_weather_crew(city)
+            result = await asyncio.to_thread(
+                weather_crew.kickoff,
+                inputs={"city": city},
+            )
+        except Exception as exc:
+            raise WeatherProviderError("Weather assistant unavailable") from exc
+
+        logger.info("LLM weather report for city: %s", city)
+        return {"status": "ok", "message": str(result)}
+
+    async def get_opengen_weather_report(self, city: str) -> dict[str, str]:
+        """Run the CrewAI weather agent without blocking the API event loop."""
+        try:
+            logger.info("Building CrewAI weather crew for city: %s", city)
+            weather_crew = build_weather_crew(city)
+            result = await asyncio.to_thread(
+                weather_crew.kickoff,
+                inputs={"city": city},
+            )
+        except Exception as exc:
+            raise WeatherProviderError("Weather assistant unavailable") from exc
+
+        logger.info("LLM weather report for city: %s", city)
+        return {"status": "ok", "message": str(result)}
+
 
 
