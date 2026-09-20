@@ -4,15 +4,16 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 import httpx
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 from app.agents.crewai import build_weather_crew
 from app.services.interface.weather_service_interface import WeatherServiceInterface
-import logging
+from app.config import settings
+#import logging
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
-load_dotenv()
+#load_dotenv()
 
 
 class WeatherServiceError(Exception):
@@ -28,8 +29,8 @@ class WeatherProviderError(WeatherServiceError):
 
 
 class WeatherService(WeatherServiceInterface):
-    base_url: str = os.getenv("WEATHER_API_URL", "https://wttr.in")
-    timeout_seconds: float = float(os.getenv("WEATHER_TIMEOUT_SECONDS", "10"))
+    base_url: str = settings.WEATHER_API_URL
+    timeout_seconds: float = settings.WEATHER_TIMEOUT_SECONDS
 
     #def __post_init__(self) -> None:
     #    object.__setattr__(self, "weather_crew", build_weather_crew())
@@ -37,7 +38,7 @@ class WeatherService(WeatherServiceInterface):
     async def get_llm_weather_report(self, city: str) -> dict[str, str]:
         """Run the CrewAI weather agent without blocking the API event loop."""
         try:
-            logger.info("Building CrewAI weather crew for city: %s", city)
+            print("Building CrewAI weather crew for city: %s", city)
             weather_crew = build_weather_crew(city)
             result = await asyncio.to_thread(
                 weather_crew.kickoff,
@@ -46,7 +47,7 @@ class WeatherService(WeatherServiceInterface):
         except Exception as exc:
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
-        logger.info("LLM weather report for city: %s", city)
+        print("LLM weather report for city: %s", city)
         return {"status": "ok", "message": str(result)}
 
     async def get_current_weather(self, city: str) -> dict[str, str | int | float]:
