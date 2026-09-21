@@ -12,11 +12,13 @@ A FastAPI service that retrieves current weather data from [wttr.in](https://wtt
 - Health-check endpoint
 - Pydantic request and response schemas
 - CORS enabled for API clients
+- Redis caching for current weather and generated weather reports
 - Interactive API documentation through FastAPI
 
 ## Requirements
 
 - Python 3.11 or newer
+- Redis 7 or newer for caching
 - An OpenAI API key for the CrewAI, LangGraph, and AutoGen endpoints
 - A Google API key for the Google ADK endpoint
 
@@ -54,9 +56,14 @@ REDIS_URL=redis://localhost:6379/0
 REDIS_CACHE_TTL_SECONDS=300
 ```
 
-When using Docker Compose, Redis is started automatically and the API waits for
-its health check before starting. Current weather responses are cached in Redis
-for the configured TTL.
+Current weather responses and CrewAI, LangGraph, AutoGen, and Google ADK reports
+are cached in Redis for the configured TTL. Cache entries are separated by city
+and provider. If Redis is unavailable, the API continues by calling the weather
+or agent provider directly.
+
+For local API development, start Redis separately and keep
+`REDIS_URL=redis://localhost:6379/0`. Docker Compose starts Redis automatically
+and configures the API to use the internal `redis` hostname.
 
 ## Run the API
 
@@ -78,7 +85,8 @@ Start the API and Redis together with Docker Compose:
 docker compose up --build
 ```
 
-The API is available at `http://localhost:8000`.
+The API is available at `http://localhost:8000` when started directly, or at
+`http://localhost` when started with Docker Compose.
 
 Interactive documentation:
 
@@ -215,7 +223,7 @@ app/
 ├── tools/               # Weather tools shared by the agent integrations
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
-└── utils/               # Logging helpers
+└── utils/               # Logging and Redis cache helpers
 ```
 
 ## Error responses
