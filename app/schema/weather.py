@@ -19,3 +19,4 @@ class WeatherResponse(BaseModel):
 class AgentResponse(BaseModel):
     status: Literal["ok", "fail"]
     message: str
+    isCached: bool = Field(default=False, description="Indicates if the response was served from cache")

@@ -144,7 +144,15 @@ def test_agent_report_uses_redis_cache() -> None:
             first_result = await service.get_crewai_weather_report("Delhi")
             second_result = await service.get_crewai_weather_report("delhi")
 
-        assert first_result == second_result
+        assert first_result == {
+            "status": "ok",
+            "message": "CrewAI report for Delhi",
+        }
+        assert second_result == {
+            "status": "ok",
+            "message": "CrewAI report for Delhi",
+            "isCached": True,
+        }
         assert kickoff_calls == 1
         assert cache.setex_calls == 1
         assert "weather:report:crewai:delhi" in cache.values
@@ -179,6 +187,7 @@ def test_autogen_weather_returns_agent_response(client: TestClient) -> None:
     assert response.json() == {
         "status": "ok",
         "message": "AutoGen report for Delhi",
+        "isCached": False,
     }
 
 

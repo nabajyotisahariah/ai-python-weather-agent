@@ -53,7 +53,7 @@ GOOGLE_ADK_MODEL=gemini-2.0-flash
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
 REDIS_URL=redis://localhost:6379/0
-REDIS_CACHE_TTL_SECONDS=300
+REDIS_CACHE_TTL_SECONDS=3600
 ```
 
 Current weather responses and CrewAI, LangGraph, AutoGen, and Google ADK reports

@@ -27,11 +27,11 @@ class AsyncRedisCache:
 
         return None
 
-    async def set(self, key: str, value: dict[str, Any]) -> None:
+    async def set(self, key: str, value: dict[str, Any], ex: int | None = None) -> None:
         try:
             await self.redis.setex(
                 key,
-                settings.REDIS_CACHE_TTL_SECONDS,
+                ex or settings.REDIS_CACHE_TTL_SECONDS,
                 json.dumps(value),
             )
         except RedisError as exc:

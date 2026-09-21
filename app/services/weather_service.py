@@ -55,11 +55,12 @@ class WeatherService(WeatherServiceInterface):
             return {
                 "status": str(cached_report["status"]),
                 "message": str(cached_report["message"]),
+                "isCached": True,
             }
         return None
 
     async def _cache_report(self, provider: str, city: str, report: AgentResponse) -> None:
-        await self.cache.set(self._report_cache_key(provider, city), report)
+        await self.cache.set(self._report_cache_key(provider, city), report, ex=3600)
 
     #def __post_init__(self) -> None:
     #    object.__setattr__(self, "weather_crew", build_weather_crew())
