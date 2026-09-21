@@ -1,11 +1,17 @@
+import asyncio
 from collections.abc import Iterator
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.route.weather import get_weather_service
-from app.services.weather_service import CityNotFoundError, WeatherProviderError
+from app.services.weather_service import (
+    CityNotFoundError,
+    WeatherProviderError,
+    WeatherService,
+)
 
 
 class StubWeatherService:
@@ -43,6 +49,49 @@ class FailingWeatherService(StubWeatherService):
         raise WeatherProviderError("Weather assistant unavailable")
 
 
+class FakeRedis:
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+        self.setex_calls = 0
+
+    async def get(self, key: str) -> str | None:
+        return self.values.get(key)
+
+    async def setex(self, key: str, ttl: int, value: str) -> bool:
+        self.values[key] = value
+        self.setex_calls += 1
+        return True
+
+
+class FakeHttpClient:
+    calls = 0
+
+    async def __aenter__(self) -> "FakeHttpClient":
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+    async def get(self, *args: object, **kwargs: object) -> object:
+        self.calls += 1
+        return type(
+            "FakeResponse",
+            (),
+            {
+                "status_code": 200,
+                "json": lambda self: {
+                    "current_condition": [{
+                        "temp_C": "25",
+                        "FeelsLikeC": "26",
+                        "humidity": "60",
+                        "weatherDesc": [{"value": "Sunny"}],
+                        "windspeedKmph": "10",
+                    }],
+                },
+            },
+        )()
+
+
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     app.dependency_overrides[get_weather_service] = lambda: StubWeatherService()
@@ -56,6 +105,51 @@ def test_health_check(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_current_weather_uses_redis_cache() -> None:
+    async def run_test() -> None:
+        cache = FakeRedis()
+        http_client = FakeHttpClient()
+        service = WeatherService(redis_client=cache)
+
+        with patch("app.services.weather_service.httpx.AsyncClient", return_value=http_client):
+            first_result = await service.get_current_weather("Delhi")
+            second_result = await service.get_current_weather("delhi")
+
+        assert first_result == second_result
+        assert http_client.calls == 1
+        assert service.cache.redis is cache
+        assert cache.setex_calls == 1
+
+    asyncio.run(run_test())
+
+
+def test_agent_report_uses_redis_cache() -> None:
+    async def run_test() -> None:
+        cache = FakeRedis()
+        service = WeatherService(redis_client=cache)
+        kickoff_calls = 0
+
+        class FakeCrew:
+            def kickoff(self, inputs: dict[str, str]) -> str:
+                nonlocal kickoff_calls
+                kickoff_calls += 1
+                return f"CrewAI report for {inputs['city']}"
+
+        with patch(
+            "app.services.weather_service.build_weather_crew",
+            return_value=FakeCrew(),
+        ):
+            first_result = await service.get_crewai_weather_report("Delhi")
+            second_result = await service.get_crewai_weather_report("delhi")
+
+        assert first_result == second_result
+        assert kickoff_calls == 1
+        assert cache.setex_calls == 1
+        assert "weather:report:crewai:delhi" in cache.values
+
+    asyncio.run(run_test())
 
 
 def test_current_weather_returns_service_data(client: TestClient) -> None:

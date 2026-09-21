@@ -50,7 +50,13 @@ GOOGLE_API_KEY=your-google-api-key
 GOOGLE_ADK_MODEL=gemini-2.0-flash
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
+REDIS_URL=redis://localhost:6379/0
+REDIS_CACHE_TTL_SECONDS=300
 ```
+
+When using Docker Compose, Redis is started automatically and the API waits for
+its health check before starting. Current weather responses are cached in Redis
+for the configured TTL.
 
 ## Run the API
 
@@ -64,6 +70,12 @@ You can also start the API directly:
 
 ```powershell
 python app/main.py
+```
+
+Start the API and Redis together with Docker Compose:
+
+```powershell
+docker compose up --build
 ```
 
 The API is available at `http://localhost:8000`.
