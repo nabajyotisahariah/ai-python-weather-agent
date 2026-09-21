@@ -20,7 +20,7 @@ class WeatherState(TypedDict):
 
 def _build_graph():
     tools: list[BaseTool] = [get_weather]
-    llm = ChatOpenAI(model=settings.openai_api_model, temperature=0)
+    llm = ChatOpenAI(api_key=settings.openai_api_key, model=settings.openai_api_model, temperature=0)
     llm_with_tools = llm.bind_tools(tools)
 
     logger.info("LangGraph weather agent initialized with model: %s", settings.openai_api_model)

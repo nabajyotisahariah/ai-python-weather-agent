@@ -89,21 +89,6 @@ class WeatherService(WeatherServiceInterface):
         logger.info("LLM weather report for city: %s", city)
         return {"status": "ok", "message": str(result)}
 
-    async def get_opengen_weather_report(self, city: str) -> AgentResponse:
-        """Run the CrewAI weather agent without blocking the API event loop."""
-        try:
-            logger.info("Building CrewAI weather crew for city: %s", city)
-            weather_crew = build_weather_crew(city)
-            result = await asyncio.to_thread(
-                weather_crew.kickoff,
-                inputs={"city": city},
-            )
-        except Exception as exc:
-            raise WeatherProviderError("Weather assistant unavailable") from exc
-
-        logger.info("LLM weather report for city: %s", city)
-        return {"status": "ok", "message": str(result)}
-
     async def get_langgraph_weather_report(self, city: str) -> AgentResponse:
         """Run the LangGraph weather agent without blocking the API event loop."""
         try:
@@ -125,7 +110,6 @@ class WeatherService(WeatherServiceInterface):
 
         logger.info("AutoGen weather report generated for city: %s", city)
         return {"status": "ok", "message": result}
-
 
     async def get_google_adk_weather_report(self, city: str) -> AgentResponse:
         """Run the Google ADK weather agent without blocking the API event loop."""

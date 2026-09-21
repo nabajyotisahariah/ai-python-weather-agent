@@ -14,11 +14,6 @@ class WeatherServiceInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_opengen_weather_report(self, city: str) -> dict[str, str]:
-           """Return an LLM-generated weather report for a city."""
-           raise NotImplementedError
-
-    @abstractmethod
     async def get_langgraph_weather_report(self, city: str) -> dict[str, str]:
             """Return an LLM-generated weather report for a city."""
             raise NotImplementedError
