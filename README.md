@@ -13,6 +13,8 @@ A FastAPI service that retrieves current weather data from [wttr.in](https://wtt
 - Pydantic request and response schemas
 - CORS enabled for API clients
 - Redis caching for current weather and generated weather reports
+- Defensive error handling and logging across agent providers
+- Graceful 502 responses when a weather or AI provider fails
 - Interactive API documentation through FastAPI
 
 ## Requirements
@@ -21,6 +23,7 @@ A FastAPI service that retrieves current weather data from [wttr.in](https://wtt
 - Redis 7 or newer for caching
 - An OpenAI API key for the CrewAI, LangGraph, and AutoGen endpoints
 - A Google API key for the Google ADK endpoint
+- AutoGen AgentChat and AutoGen Extensions 0.7.5 for the AutoGen endpoint
 
 ## Setup
 
@@ -61,6 +64,11 @@ are cached in Redis for the configured TTL. Cache entries are separated by city
 and provider. If Redis is unavailable, the API continues by calling the weather
 or agent provider directly.
 
+Agent and weather-provider calls are wrapped in defensive try/except blocks. When
+an upstream provider fails, the service logs the exception and returns a clean
+`WeatherProviderError`, which the API routes convert into a `502` response instead
+of crashing the request.
+
 For local API development, start Redis separately and keep
 `REDIS_URL=redis://localhost:6379/0`. Docker Compose starts Redis automatically
 and configures the API to use the internal `redis` hostname.
@@ -83,6 +91,14 @@ Start the API and Redis together with Docker Compose:
 
 ```powershell
 docker compose up --build
+```
+
+If the dependencies in `requirements.txt` change, rebuild the API image so the
+container installs the updated packages:
+
+```powershell
+docker compose build --no-cache
+docker compose up
 ```
 
 The API is available at `http://localhost:8000` when started directly, or at
@@ -133,8 +149,8 @@ Example response:
 ### Current weather
 
 ```http
-GET /api/v1/weather?city=delhi
-```
+GET /api/v1/weather?city=what is new delhi weather
+ ```
 
 Example response:
 
@@ -152,13 +168,13 @@ Example response:
 PowerShell example:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather?city=delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather?city=what is new delhi weather"
 ```
 
 ### CrewAI weather summary
 
 ```http
-GET /api/v1/weather/crewai?city=delhi
+GET /api/v1/weather/crewai?city=what is new delhi weather
 ```
 
 Example response:
@@ -173,19 +189,19 @@ Example response:
 PowerShell example:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/crewai?city=delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/crewai?city=what is new delhi weather"
 ```
 
 ### LangGraph weather summary
 
 ```http
-GET /api/v1/weather/langgraph?city=delhi
+GET /api/v1/weather/langgraph?city=what is new delhi weather
 ```
 
 PowerShell example:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/langgraph?city=delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/langgraph?city=what is new delhi weather"
 ```
 
 ### AutoGen weather summary
@@ -197,19 +213,19 @@ GET /api/v1/weather/autogen?city=delhi
 PowerShell example:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=what is new delhi weather"
 ```
 
 ### Google ADK weather summary
 
 ```http
-GET /api/v1/weather/google-adk?city=delhi
+GET /api/v1/weather/google-adk?city=what is new delhi weather
 ```
 
 PowerShell example:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/google-adk?city=delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/google-adk?city=what is new delhi weather"
 ```
 
 ## Project structure
@@ -230,4 +246,4 @@ app/
 
 - `404`: city was not found
 - `422`: invalid or missing `city` query parameter
-- `502`: weather provider or AI service is unavailable
+- `502`: weather provider or AI service is unavailable; provider exceptions are logged and surfaced as a graceful service error

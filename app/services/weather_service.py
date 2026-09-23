@@ -35,8 +35,8 @@ class WeatherProviderError(WeatherServiceError):
 
 
 class WeatherService(WeatherServiceInterface):
-    base_url: str = settings.WEATHER_API_URL
-    timeout_seconds: float = settings.WEATHER_TIMEOUT_SECONDS
+    base_url: str = settings.weather_api_url
+    timeout_seconds: float = settings.weather_timeout_seconds
 
     def __init__(self, redis_client: Redis | None = None) -> None:
         self.cache = AsyncRedisCache(redis_client)
@@ -123,7 +123,10 @@ class WeatherService(WeatherServiceInterface):
                 weather_crew.kickoff,
                 inputs={"city": city},
             )
+            if result is None:
+                raise ValueError("CrewAI returned no result")
         except Exception as exc:
+            logger.exception("CrewAI weather agent failed for city: %s", city)
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
         logger.info("LLM weather report for city: %s", city)
@@ -141,7 +144,10 @@ class WeatherService(WeatherServiceInterface):
         try:
             logger.info("Running LangGraph weather agent for city: %s", city)
             result = await asyncio.to_thread(run_langgraph_weather_agent, city)
+            if not result:
+                raise ValueError("LangGraph returned an empty response")
         except Exception as exc:
+            logger.exception("LangGraph weather agent failed for city: %s", city)
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
         logger.info("LangGraph weather report generated for city: %s", city)
@@ -159,7 +165,10 @@ class WeatherService(WeatherServiceInterface):
         try:
             logger.info("Running AutoGen weather agent for city: %s", city)
             result = await asyncio.to_thread(run_autogen_weather_agent, city)
+            if not result:
+                raise ValueError("AutoGen returned an empty response")
         except Exception as exc:
+            logger.exception("AutoGen weather agent failed for city: %s", city)
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
         logger.info("AutoGen weather report generated for city: %s", city)
@@ -177,7 +186,10 @@ class WeatherService(WeatherServiceInterface):
         try:
             logger.info("Running Google ADK weather agent for city: %s", city)
             result = await asyncio.to_thread(run_google_adk_weather_agent, city)
+            if not result:
+                raise ValueError("Google ADK returned an empty response")
         except Exception as exc:
+            logger.exception("Google ADK weather agent failed for city: %s", city)
             raise WeatherProviderError("Weather assistant unavailable") from exc
 
         logger.info("Google ADK weather report generated for city: %s", city)

@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import HumanMessage
@@ -9,8 +10,6 @@ from langgraph.prebuilt import ToolNode
 
 from app.config import settings
 from app.tools.langgraph.weather_tool import get_weather
-
-import logging
 
 logger = logging.getLogger(__name__)
 

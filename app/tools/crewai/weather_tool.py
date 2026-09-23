@@ -9,9 +9,9 @@ def get_weather(city: str) -> str:
     Get the current weather information for a city.
     """
 
-    url = f"{settings.WEATHER_API_URL}/{city}?format=j1"
+    url = f"{settings.weather_api_url}/{city}?format=j1"
 
-    response = requests.get(url, timeout=settings.WEATHER_TIMEOUT_SECONDS)
+    response = requests.get(url, timeout=settings.weather_timeout_seconds)
     response.raise_for_status()
 
     data = response.json()

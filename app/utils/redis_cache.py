@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class AsyncRedisCache:
     def __init__(self, redis_client: Redis | None = None) -> None:
         self.redis = redis_client or Redis.from_url(
-            settings.REDIS_URL,
+            settings.redis_url,
             decode_responses=True,
         )
 

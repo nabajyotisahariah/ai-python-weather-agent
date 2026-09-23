@@ -5,8 +5,8 @@ fastapi
 uvicorn
 langgraph
 langchain-openai
-autogen-agentchat
-autogen-ext[openai]
+autogen-agentchat==0.7.5
+autogen-ext[openai]==0.7.5
 google-adk
 pytest
 redis
