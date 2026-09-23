@@ -23,6 +23,7 @@ A FastAPI service that retrieves current weather data from [wttr.in](https://wtt
 - Redis 7 or newer for caching
 - An OpenAI API key for the CrewAI, LangGraph, and AutoGen endpoints
 - A Google API key for the Google ADK endpoint
+- AutoGen AgentChat and AutoGen Extensions 0.7.5 for the AutoGen endpoint
 
 ## Setup
 
@@ -90,6 +91,14 @@ Start the API and Redis together with Docker Compose:
 
 ```powershell
 docker compose up --build
+```
+
+If the dependencies in `requirements.txt` change, rebuild the API image so the
+container installs the updated packages:
+
+```powershell
+docker compose build --no-cache
+docker compose up
 ```
 
 The API is available at `http://localhost:8000` when started directly, or at
