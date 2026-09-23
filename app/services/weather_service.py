@@ -35,8 +35,8 @@ class WeatherProviderError(WeatherServiceError):
 
 
 class WeatherService(WeatherServiceInterface):
-    base_url: str = settings.WEATHER_API_URL
-    timeout_seconds: float = settings.WEATHER_TIMEOUT_SECONDS
+    base_url: str = settings.weather_api_url
+    timeout_seconds: float = settings.weather_timeout_seconds
 
     def __init__(self, redis_client: Redis | None = None) -> None:
         self.cache = AsyncRedisCache(redis_client)

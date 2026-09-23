@@ -8,11 +8,11 @@ from app.config import settings
 def get_weather(city: str) -> str:
     """Get current weather information for a city."""
     city = city.strip()
-    url = f"{settings.WEATHER_API_URL.rstrip('/')}/{quote(city, safe='')}"
+    url = f"{settings.weather_api_url.rstrip('/')}/{quote(city, safe='')}"
     response = requests.get(
         url,
         params={"format": "j1"},
-        timeout=settings.WEATHER_TIMEOUT_SECONDS,
+        timeout=settings.weather_timeout_seconds,
     )
     response.raise_for_status()
 
