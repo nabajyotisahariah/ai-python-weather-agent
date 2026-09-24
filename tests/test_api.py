@@ -28,9 +28,6 @@ class StubWeatherService:
     async def get_crewai_weather_report(self, city: str) -> dict[str, str]:
         return {"status": "ok", "message": f"CrewAI report for {city}"}
 
-    async def get_opengen_weather_report(self, city: str) -> dict[str, str]:
-        return {"status": "ok", "message": f"OpenGen report for {city}"}
-
     async def get_langgraph_weather_report(self, city: str) -> dict[str, str]:
         return {"status": "ok", "message": f"LangGraph report for {city}"}
 

@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     redis_cache_ttl_seconds: int = 3600
 
+    # Langfuse
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
         env_file_encoding="utf-8",

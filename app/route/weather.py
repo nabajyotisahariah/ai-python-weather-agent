@@ -57,24 +57,6 @@ async def get_crewai_weather_route(
         logger.exception("Unexpected CrewAI weather error for city: %s", request.city.strip())
         return assistant_error_response()
 
-@router.get("/weather/opengen")
-async def get_opengen_weather_route(
-    request: WeatherRequest = Depends(),
-    service: WeatherServiceInterface = Depends(get_weather_service),
-) -> AgentResponse:
-    """Return a CrewAI-generated weather summary for a city."""
-    try:
-        logger.info("Fetching OpenGen weather report for city: %s", request.city.strip())
-        return await service.get_opengen_weather_report(request.city.strip())
-    except CityNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError:
-        logger.warning("OpenGen weather provider failed for city: %s", request.city.strip())
-        return assistant_error_response()
-    except Exception as exc:
-        logger.exception("Unexpected OpenGen weather error for city: %s", request.city.strip())
-        return assistant_error_response()
-
 @router.get("/weather/langgraph")
 async def get_langgraph_weather_route(
     request: WeatherRequest = Depends(),

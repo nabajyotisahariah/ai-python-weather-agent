@@ -1,31 +1,30 @@
 # Weather Assistant API
 
-A FastAPI service that retrieves current weather data from [wttr.in](https://wttr.in) and can produce natural-language weather summaries through CrewAI, LangGraph, AutoGen, or Google ADK.
+FastAPI service for current weather data and AI-generated weather summaries. Weather data is retrieved from [wttr.in](https://wttr.in), while summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
+
+The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
 ## Features
 
-- Current weather data for a city
-- CrewAI-generated weather summaries
-- LangGraph-generated weather summaries
-- AutoGen-generated weather summaries
-- Google ADK-generated weather summaries
+- Current weather by city
+- AI weather summaries through four agent integrations
+- Redis caching for weather data and generated reports
 - Health-check endpoint
-- Pydantic request and response schemas
-- CORS enabled for API clients
-- Redis caching for current weather and generated weather reports
-- Defensive error handling and logging across agent providers
-- Graceful 502 responses when a weather or AI provider fails
-- Interactive API documentation through FastAPI
+- Pydantic request and response validation
+- CORS support for API clients
+- Structured logging and provider error handling
+- Interactive Swagger UI and ReDoc documentation
 
 ## Requirements
 
 - Python 3.11 or newer
 - Redis 7 or newer for caching
-- An OpenAI API key for the CrewAI, LangGraph, and AutoGen endpoints
-- A Google API key for the Google ADK endpoint
-- AutoGen AgentChat and AutoGen Extensions 0.7.5 for the AutoGen endpoint
+- An OpenAI API key for CrewAI, LangGraph, and AutoGen
+- A Google API key for Google ADK
+- Langfuse credentials for optional observability
+- Docker Desktop, if running Redis or the API container with Docker
 
-## Setup
+## Local Setup
 
 Create and activate a virtual environment in PowerShell:
 
@@ -37,100 +36,125 @@ python -m venv .venv
 Install the dependencies:
 
 ```powershell
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Create a `.env` file from the example:
+Create the local environment file:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Update `.env` with your model provider keys and weather settings:
+Update `.env` with valid provider credentials:
 
 ```env
-OPENAI_API_KEY=your-api-key
+environment=development
+CREWAI_TRACING_ENABLED=false
+OPENAI_API_KEY=your-openai-api-key
 OPENAI_API_MODEL=gpt-4o-mini
+APP_NAME=Weather AI API
+APP_VERSION=1.0.0
 GOOGLE_API_KEY=your-google-api-key
-GOOGLE_ADK_MODEL=gemini-2.0-flash
+GOOGLE_ADK_MODEL=gemini-3.5-flash-lite
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
 REDIS_URL=redis://localhost:6379/0
 REDIS_CACHE_TTL_SECONDS=3600
 ```
 
-Current weather responses and CrewAI, LangGraph, AutoGen, and Google ADK reports
-are cached in Redis for the configured TTL. Cache entries are separated by city
-and provider. If Redis is unavailable, the API continues by calling the weather
-or agent provider directly.
+`OPENAI_API_KEY` is required in development. `GOOGLE_API_KEY` is required when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
 
-Agent and weather-provider calls are wrapped in defensive try/except blocks. When
-an upstream provider fails, the service logs the exception and returns a clean
-`WeatherProviderError`, which the API routes convert into a `502` response instead
-of crashing the request.
+### Langfuse observability
 
-For local API development, start Redis separately and keep
-`REDIS_URL=redis://localhost:6379/0`. Docker Compose starts Redis automatically
-and configures the API to use the internal `redis` hostname.
+Langfuse tracing is optional. Add these values to `.env` to capture weather requests and agent operations in Langfuse:
+
+```env
+LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
+LANGFUSE_SECRET_KEY=your-langfuse-secret-key
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
+```
+
+When both keys are configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
+
+## Start Redis
+
+The Compose file starts Redis only:
+
+```powershell
+docker compose up -d redis
+```
+
+Stop Redis when it is no longer needed:
+
+```powershell
+docker compose down
+```
+
+The API can also run without Redis. In that case, requests bypass the cache and call the upstream weather or agent provider directly.
 
 ## Run the API
 
-Start the development server with Uvicorn:
+Start the development server from the project root:
 
 ```powershell
 uvicorn app.main:app --reload
 ```
 
-You can also start the API directly:
+Alternatively:
 
 ```powershell
 python app/main.py
 ```
 
-Start the API and Redis together with Docker Compose:
+The API is available at `http://localhost:8000`.
 
-```powershell
-docker compose up --build
-```
-
-If the dependencies in `requirements.txt` change, rebuild the API image so the
-container installs the updated packages:
-
-```powershell
-docker compose build --no-cache
-docker compose up
-```
-
-The API is available at `http://localhost:8000` when started directly, or at
-`http://localhost` when started with Docker Compose.
-
-Interactive documentation:
+Documentation:
 
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-## Run tests
+## Run with Docker
 
-Activate the virtual environment and run the test suite from the project root:
+Build the image:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+docker build -t weather-assistant-api .
+```
+
+Run the API using the local environment file:
+
+```powershell
+docker run --rm --env-file .env -p 8000:8000 weather-assistant-api
+```
+
+When the API runs inside a container, `REDIS_URL` must point to a Redis host reachable from that container. For example, use `redis` when both services run on the same Docker network.
+
+## Run Tests
+
+Run the complete test suite from the project root:
+
+```powershell
 python -m pytest -q
 ```
 
-Run tests with detailed output:
+Run tests with verbose output:
 
 ```powershell
 python -m pytest -v
 ```
 
-Run a specific test:
+Run one test:
 
 ```powershell
 python -m pytest tests/test_api.py::test_autogen_weather_returns_agent_response -q
 ```
 
-## Endpoints
+The project pins AutoGen `0.7.5` and Langfuse `4.15.6` in `requirements.txt`.
+
+## API Endpoints
+
+All application endpoints use the `/api/v1` prefix. The `city` query parameter is required for weather endpoints.
 
 ### Health check
 
@@ -138,112 +162,97 @@ python -m pytest tests/test_api.py::test_autogen_weather_returns_agent_response 
 GET /api/v1/health
 ```
 
-Example response:
+Response:
 
 ```json
 {
-	"status": "ok"
+  "status": "ok"
 }
 ```
 
 ### Current weather
 
 ```http
-GET /api/v1/weather?city=what is new delhi weather
- ```
+GET /api/v1/weather?city=Delhi
+```
+
+PowerShell:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather?city=Delhi"
+```
+
+Example response for a fresh request:
+
+```json
+{
+  "city": "Delhi",
+  "temperature": "25",
+  "feels_like": "26",
+  "humidity": "60",
+  "description": "Sunny",
+  "wind_speed": "10"
+}
+```
+
+### AI weather summaries
+
+The following endpoints return an object with `status` and `message` fields:
+
+```http
+GET /api/v1/weather/crewai?city=Delhi
+GET /api/v1/weather/langgraph?city=Delhi
+GET /api/v1/weather/autogen?city=Delhi
+GET /api/v1/weather/google-adk?city=Delhi
+```
+
+PowerShell example:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=Delhi"
+```
 
 Example response:
 
 ```json
 {
-	"city": "delhi",
-	"temperature": "36",
-	"feels_like": "36",
-	"humidity": "24",
-	"description": "Sunny",
-	"wind_speed": "7"
+  "status": "ok",
+  "message": "The current weather in Delhi is ...",
+  "isCached": false
 }
 ```
 
-PowerShell example:
+Repeated requests for the same provider and city can return `"isCached": true`.
 
-```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather?city=what is new delhi weather"
-```
+## Error Responses
 
-### CrewAI weather summary
+- `404`: the weather provider could not find the requested city
+- `422`: the `city` query parameter is missing or invalid
+- `502`: the weather or AI provider is unavailable
+- `500`: an unexpected application error occurred
 
-```http
-GET /api/v1/weather/crewai?city=what is new delhi weather
-```
+Provider failures are logged and returned as safe API responses instead of exposing internal exceptions.
 
-Example response:
-
-```json
-{
-	"status": "ok",
-	"message": "The current weather in Delhi is as follows: ..."
-}
-```
-
-PowerShell example:
-
-```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/crewai?city=what is new delhi weather"
-```
-
-### LangGraph weather summary
-
-```http
-GET /api/v1/weather/langgraph?city=what is new delhi weather
-```
-
-PowerShell example:
-
-```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/langgraph?city=what is new delhi weather"
-```
-
-### AutoGen weather summary
-
-```http
-GET /api/v1/weather/autogen?city=delhi
-```
-
-PowerShell example:
-
-```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=what is new delhi weather"
-```
-
-### Google ADK weather summary
-
-```http
-GET /api/v1/weather/google-adk?city=what is new delhi weather
-```
-
-PowerShell example:
-
-```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/google-adk?city=what is new delhi weather"
-```
-
-## Project structure
+## Project Structure
 
 ```text
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
-├── services/            # Service interface and weather implementation
-├── tools/               # Weather tools shared by the agent integrations
+├── services/            # Weather service and service interface
+├── tools/               # Agent weather tools
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
 └── utils/               # Logging and Redis cache helpers
+helm-config/             # Kubernetes Helm chart
+tests/                   # API and service tests
 ```
 
-## Error responses
+## Kubernetes
 
-- `404`: city was not found
-- `422`: invalid or missing `city` query parameter
-- `502`: weather provider or AI service is unavailable; provider exceptions are logged and surfaced as a graceful service error
+The `helm-config` directory contains the Helm chart for deploying the API. Update the image repository, tag, ingress host, and runtime secrets in the chart values before deploying to a cluster.
+
+```powershell
+helm upgrade --install weather-agent .\helm-config
+```

@@ -31,7 +31,7 @@ class AsyncRedisCache:
         try:
             await self.redis.setex(
                 key,
-                ex or settings.REDIS_CACHE_TTL_SECONDS,
+                ex or settings.redis_cache_ttl_seconds,
                 json.dumps(value),
             )
         except RedisError as exc:
