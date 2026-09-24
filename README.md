@@ -21,6 +21,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Redis 7 or newer for caching
 - An OpenAI API key for CrewAI, LangGraph, and AutoGen
 - A Google API key for Google ADK
+- Langfuse credentials for optional observability
 - Docker Desktop, if running Redis or the API container with Docker
 
 ## Local Setup
@@ -49,12 +50,17 @@ Update `.env` with valid provider credentials:
 
 ```env
 environment=development
+CREWAI_TRACING_ENABLED=false
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_API_MODEL=gpt-4o-mini
+APP_NAME=Weather AI API
+APP_VERSION=1.0.0
 GOOGLE_API_KEY=your-google-api-key
 GOOGLE_ADK_MODEL=gemini-3.5-flash-lite
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
+REDIS_URL=redis://localhost:6379/0
+REDIS_CACHE_TTL_SECONDS=3600
 ```
 
 `OPENAI_API_KEY` is required in development. `GOOGLE_API_KEY` is required when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
@@ -66,10 +72,10 @@ Langfuse tracing is optional. Add these values to `.env` to capture weather requ
 ```env
 LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
 LANGFUSE_SECRET_KEY=your-langfuse-secret-key
-LANGFUSE_BASE_URL=https://cloud.langfuse.com
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
 ```
 
-When configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
+When both keys are configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
 
 ## Start Redis
 
@@ -144,6 +150,8 @@ Run one test:
 python -m pytest tests/test_api.py::test_autogen_weather_returns_agent_response -q
 ```
 
+The project pins AutoGen `0.7.5` and Langfuse `4.15.6` in `requirements.txt`.
+
 ## API Endpoints
 
 All application endpoints use the `/api/v1` prefix. The `city` query parameter is required for weather endpoints.
@@ -174,7 +182,7 @@ PowerShell:
 Invoke-RestMethod "http://localhost:8000/api/v1/weather?city=Delhi"
 ```
 
-Example response:
+Example response for a fresh request:
 
 ```json
 {
@@ -213,6 +221,8 @@ Example response:
   "isCached": false
 }
 ```
+
+Repeated requests for the same provider and city can return `"isCached": true`.
 
 ## Error Responses
 
