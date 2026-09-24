@@ -59,6 +59,18 @@ WEATHER_TIMEOUT_SECONDS=10
 
 `OPENAI_API_KEY` is required in development. `GOOGLE_API_KEY` is required when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
 
+### Langfuse observability
+
+Langfuse tracing is optional. Add these values to `.env` to capture weather requests and agent operations in Langfuse:
+
+```env
+LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
+LANGFUSE_SECRET_KEY=your-langfuse-secret-key
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+```
+
+When configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
+
 ## Start Redis
 
 The Compose file starts Redis only:

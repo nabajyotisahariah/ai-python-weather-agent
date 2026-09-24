@@ -3,6 +3,8 @@ requests
 python-dotenv
 fastapi
 uvicorn
+httpx
+pydantic-settings
 langgraph
 langchain-openai
 autogen-agentchat==0.7.5
@@ -10,3 +12,4 @@ autogen-ext[openai]==0.7.5
 google-adk
 pytest
 redis
+langfuse==4.15.6
