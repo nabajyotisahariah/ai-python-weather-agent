@@ -27,6 +27,10 @@ spec:
           ports:
             - containerPort: {{ .Values.container.port }}
 
+          env:
+            - name: ENVIRONMENT
+              value: {{ .Values.environment.ENVIRONMENT | quote }}
+
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu | quote }}
