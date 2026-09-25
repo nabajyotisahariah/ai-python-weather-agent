@@ -61,18 +61,20 @@ WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
 REDIS_URL=redis://localhost:6379/0
 REDIS_CACHE_TTL_SECONDS=3600
+LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
+LANGFUSE_SECRET_KEY=your-langfuse-secret-key
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
 ```
 
-`OPENAI_API_KEY` is required in development. `GOOGLE_API_KEY` is required when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
+`OPENAI_API_KEY` is required in development because CrewAI, LangGraph, and AutoGen use OpenAI. `GOOGLE_API_KEY` is required only when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
 
 ### Langfuse observability
 
-Langfuse tracing is optional. Add these values to `.env` to capture weather requests and agent operations in Langfuse:
+Langfuse tracing is optional. The values above enable tracing when both keys are valid:
 
 ```env
 LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
 LANGFUSE_SECRET_KEY=your-langfuse-secret-key
-LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
 ```
 
 When both keys are configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
@@ -251,7 +253,9 @@ tests/                   # API and service tests
 
 ## Kubernetes
 
-The `helm-config` directory contains the Helm chart for deploying the API. Update the image repository, tag, ingress host, and runtime secrets in the chart values before deploying to a cluster.
+The `helm-config` directory contains the Helm chart for deploying the API. The production configuration loads secrets from Google Secret Manager through `GCP_SECRET_NAME` and requires `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `REDIS_URL` as environment variables. Configure those values through your cluster's secret management before deploying.
+
+Update the image repository, tag, ingress host, and resource settings in `helm-config/values.yaml` before deploying:
 
 ```powershell
 helm upgrade --install weather-agent .\helm-config
