@@ -7,6 +7,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 ## Features
 
 - Current weather by city
+- Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
 - Redis caching for weather data and generated reports
 - Health-check endpoint
@@ -31,6 +32,10 @@ Create and activate a virtual environment in PowerShell:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+ source .venv/Scripts/activate (bash)
+
+ $ python --version
+Python 3.10.5
 ```
 
 Install the dependencies:
@@ -198,6 +203,50 @@ Example response for a fresh request:
 ```
 
 ### AI weather summaries
+### Weather Forecast
+
+```http
+GET /api/v1/weather/forcast?city=Delhi
+```
+
+PowerShell:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/forcast?city=Delhi"
+```
+
+Example response:
+
+```json
+[
+  {
+    "date": "2026-09-26",
+    "max_temp_c": "34",
+    "min_temp_c": "25",
+    "avg_temp_c": "29",
+    "condition": "Sunny",
+    "humidity": "50",
+    "wind_speed_kmph": "12",
+    "chance_of_rain": "0",
+    "chance_of_snow": "0",
+    "uv_index": "7"
+  },
+  {
+    "date": "2026-09-27",
+    "max_temp_c": "33",
+    "min_temp_c": "24",
+    "avg_temp_c": "28",
+    "condition": "Partly cloudy",
+    "humidity": "55",
+    "wind_speed_kmph": "15",
+    "chance_of_rain": "10",
+    "chance_of_snow": "0",
+    "uv_index": "6"
+  }
+]
+```
+
+
 
 The following endpoints return an object with `status` and `message` fields:
 

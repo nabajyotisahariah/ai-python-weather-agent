@@ -75,3 +75,5 @@ def run_weather_agent(city: str) -> str:
     except Exception as exc:
         logger.exception("Google ADK weather agent crashed for city: %s", city)
         raise RuntimeError(f"Google ADK weather agent failed for city: {city}") from exc
+
+
