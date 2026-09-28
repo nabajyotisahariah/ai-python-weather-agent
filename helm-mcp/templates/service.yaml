@@ -1,15 +1,17 @@
 apiVersion: v1
 kind: Service
+
 metadata:
-  name: {{ include "helm-mcp.fullname" . }}
-  labels:
-    {{- include "helm-mcp.labels" . | nindent 4 }}
+  name: {{ .Release.Name }}-mcp-service
+
 spec:
-  type: {{ .Values.service.type }}
-  ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
   selector:
-    {{- include "helm-mcp.selectorLabels" . | nindent 4 }}
+    app: weather-mcp
+
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+
+  type: {{ .Values.service.type }}

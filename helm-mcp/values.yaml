@@ -5,25 +5,40 @@ image:
   tag: "1.0"
   pullPolicy: IfNotPresent
 
-service:
-  type: ClusterIP
-  port: 80
-  targetPort: 8100
-
-containerPort: 8100
+container:
+  port: 8100
 
 environment:
   ENVIRONMENT: production
 
 resources:
   requests:
-    cpu: 250m
-    memory: 256Mi
+    cpu: "250m"
+    memory: "256Mi"
+
   limits:
-    cpu: 500m
-    memory: 512Mi
+    cpu: "500m"
+    memory: "512Mi"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8100
 
 ingress:
   enabled: true
   className: nginx
-  host: weather-mcp.example.com
+
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+  hosts:
+    - host: weather-mcp.example.com
+      paths:
+        - path: /mcp
+          pathType: Prefix
+
+  tls: []
