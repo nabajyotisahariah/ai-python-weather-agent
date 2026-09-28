@@ -2,6 +2,9 @@
 
 FastAPI service for current weather data and AI-generated weather summaries. Weather data is retrieved from [wttr.in](https://wttr.in), while summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
+> **🚀 New Feature: Model Context Protocol (MCP)**
+> We now support MCP for seamless tool integration. Please refer to the [MCP Integration Guide (README-MCP.md)](README-MCP.md) for full details on running and querying the MCP server.
+
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
 ## Features
@@ -9,6 +12,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Current weather by city
 - Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
+- **Model Context Protocol (MCP)** server capability
 - Redis caching for weather data and generated reports
 - Health-check endpoint
 - Pydantic request and response validation
@@ -202,17 +206,16 @@ Example response for a fresh request:
 }
 ```
 
-### AI weather summaries
 ### Weather Forecast
 
 ```http
-GET /api/v1/weather/forcast?city=Delhi
+GET /api/v1/weather/forecast?city=Delhi
 ```
 
 PowerShell:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/forcast?city=Delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/forecast?city=Delhi"
 ```
 
 Example response:
@@ -248,19 +251,21 @@ Example response:
 
 
 
+### AI Weather Summaries
+
 The following endpoints return an object with `status` and `message` fields:
 
 ```http
-GET /api/v1/weather/crewai?city=Delhi
-GET /api/v1/weather/langgraph?city=Delhi
-GET /api/v1/weather/autogen?city=Delhi
-GET /api/v1/weather/google-adk?city=Delhi
+GET /api/v1/weather/crewai?city=What is the weather of Delhi
+GET /api/v1/weather/langgraph?city=What is the temp of Delhi
+GET /api/v1/weather/autogen?city=tell me weather of Delhi
+GET /api/v1/weather/google-adk?city=weather of Delhi
 ```
 
 PowerShell example:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=Delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=What is the weather of Delhi"
 ```
 
 Example response:
@@ -295,6 +300,7 @@ app/
 ├── tools/               # Agent weather tools
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
+├── weather-mcp.py       # MCP (Model Context Protocol) server configuration
 └── utils/               # Logging and Redis cache helpers
 helm-config/             # Kubernetes Helm chart
 tests/                   # API and service tests
