@@ -96,7 +96,8 @@ class WeatherForcastService(WeatherForecastInterface):
             response.raise_for_status()
         
             data = response.json()
-        
+            print("data ",data)
+            
             forecasts = []
         
             for item in data.get("weather", [])[:days]:
