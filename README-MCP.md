@@ -1,49 +1,32 @@
 ﻿# AI Weather Agent - MCP (Model Context Protocol) Integration
-`
 *Please refer to the main [README.md](README.md) file before exploring this document.*
-`
 ---
-`
 ## 🚀 Project Journey So Far
-`
 Before diving into the Model Context Protocol (MCP) integration, here is a quick summary of the capabilities covered in previous phases:
-`
 ### Phase 1: Agent Framework Orchestration
 Our weather capability can be orchestrated using multiple advanced agent frameworks:
-* 🤖 **CrewAI:** ```http://localhost:8000/api/v1/weather/crewai?city=What is the temp in Delhi`
-* 🦜 **LangGraph:** ```http://localhost:8000/api/v1/weather/langgraph?city=What is the temp in Delhi`
-* ⚙️ **AutoGen:** ```http://localhost:8000/api/v1/weather/autogen?city=What is the temp in Delhi`
-* ☁️ **Google ADK:** ```http://localhost:8000/api/v1/weather/google-adk?city=What is the temp in Delhi`
-`
+* 🤖 **CrewAI:** `http://localhost:8000/api/v1/weather/crewai?city=What is the temp in Delhi`
+* 🦜 **LangGraph:** `http://localhost:8000/api/v1/weather/langgraph?city=What is the temp in Delhi`
+* ⚙️ **AutoGen:** `http://localhost:8000/api/v1/weather/autogen?city=What is the temp in Delhi`
+* ☁️ **Google ADK:** `http://localhost:8000/api/v1/weather/google-adk?city=What is the temp in Delhi`
 ### Phase 2: Cloud Deployment
 The application has been successfully deployed on **GCP Kubernetes**. The architecture is designed for portability, allowing easy deployment across other environments such as Azure, AWS (ECS), or GCP EC2.
-`
 ### Phase 3: Monitoring & Observability
 We integrated **Langfuse** as our primary tool for monitoring and observability, ensuring deep insights into agent operations. **LangSmith** is also supported as an alternative backend.
-`
 ---
-`
 ## 🔌 Phase 4: Exploring MCP in the Weather Application
-`
 In this phase, we explore the **Model Context Protocol (MCP)** implementation within our weather application. MCP standardizes how AI models interact with tools and data sources.
-`
 Below are examples of how to interact with our local MCP server using `curl`. In upcoming iterations, we will connect these MCP endpoints using **n8n** by deploying them on GCP Kubernetes.
-`
 ### 1. Start the Development Server
-`
 Begin by launching the MCP server from the project root directory:
-`
 ```powershell
 uvicorn app.weather-mcp:app --host 0.0.0.0 --port 8100 --reload
 ```
-`
 ### 2. Initialize the MCP Server
-`
 First, establish a connection to the MCP server. This step negotiates the protocol version and retrieves the server's capabilities.
-`
 **Request:**
 ```bash
-curl -i `http://localhost:8100/mcp \
+curl -i http://localhost:8100/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "MCP-Protocol-Version: 2025-06-18" \
@@ -61,7 +44,6 @@ curl -i `http://localhost:8100/mcp \
     }
   }'
 ```
-`
 **Response:**
 `````http
 HTTP/1.1 200 OK
@@ -75,12 +57,10 @@ Transfer-Encoding: chunked
 event: message
 data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"AI Weather MCP Server","version":"1.28.1"},"instructions":"\n    Weather MCP server for retrieving current weather and forecast information.\n\n    Use get_weather for current weather conditions.\n    Use get_weather_forecast for weather forecast information.\n    "}}
 `````
-`
 ### 3. List Available Tools
-`
 **Request:**
 ```bash
-curl -i `http://localhost:8100/mcp \
+curl -i http://localhost:8100/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "MCP-Protocol-Version: 2025-06-18" \
@@ -91,7 +71,6 @@ curl -i `http://localhost:8100/mcp \
     "params": {}
   }'
 ```
-`
 **Response:**
 `````http
 HTTP/1.1 200 OK
@@ -105,14 +84,11 @@ Transfer-Encoding: chunked
 event: message
 data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"get_weather","description":"\n    Get current weather information for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n\n    Returns:\n        Current weather information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"}},"required":["city"],"title":"get_weatherArguments","type":"object"},"outputSchema":{"additionalProperties":true,"title":"get_weatherDictOutput","type":"object"}},{"name":"get_weather_forecast","description":"\n    Get weather forecast for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n        days: Number of forecast days, from 1 to 7.\n\n    Returns:\n        Weather forecast information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"},"days":{"default":3,"title":"Days","type":"integer"}},"required":["city"],"title":"get_weather_forecastArguments","type":"object"},"outputSchema":{"properties":{"result":{"items":{"additionalProperties":true,"type":"object"},"title":"Result","type":"array"}},"required":["result"],"title":"get_weather_forecastOutput","type":"object"}}]}}
 `````
-`
 ### 4. Call a Tool get_weather
-`
 Finally, execute a specific tool on the MCP server. In this example, we call the `get_weather` tool for the city of Delhi.
-`
 **Request:**
 ```bash
-curl -i `http://localhost:8100/mcp \
+curl -i http://localhost:8100/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "MCP-Protocol-Version: 2025-06-18" \
@@ -128,7 +104,6 @@ curl -i `http://localhost:8100/mcp \
     }
   }'
 ```
-`
 **Response:**
 `````http
 HTTP/1.1 200 OK
@@ -142,14 +117,11 @@ Transfer-Encoding: chunked
 event: message
 data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"status\": \"success\",\n  \"data\": {\n    \"city\": \"Delhi\",\n    \"temperature\": \"24\",\n    \"feels_like\": \"26\",\n    \"humidity\": \"74\",\n    \"description\": \"Partly Cloudy \",\n    \"wind_speed\": \"7\"\n  },\n  \"isCached\": false\n}"}],"structuredContent":{"status":"success","data":{"city":"Delhi","temperature":"24","feels_like":"26","humidity":"74","description":"Partly Cloudy ","wind_speed":"7"},"isCached":false},"isError":false}}
 `````
-`
 ### 5. Call a Tool get_weather_forecast
-`
 Finally, execute a specific tool on the MCP server. In this example, we call the `get_weather` tool for the city of Delhi.
-`
 **Request:**
 ```bash
-curl -i `http://localhost:8100/mcp \
+curl -i http://localhost:8100/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "MCP-Protocol-Version: 2025-06-18" \
@@ -178,3 +150,18 @@ Transfer-Encoding: chunked
 event: message
 data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"status\": \"success\",\n  \"data\": [\n    {\n      \"date\": \"2026-09-28\",\n      \"max_temp_c\": \"34\",\n      \"min_temp_c\": \"25\",\n      \"avg_temp_c\": \"29\",\n      \"condition\": \"Sunny\",\n      \"humidity\": \"50\",\n      \"wind_speed_kmph\": \"12\",\n      \"chance_of_rain\": \"0\",\n      \"chance_of_snow\": \"0\",\n      \"uv_index\": \"7\"\n    }\n  ],\n  \"isCached\": false\n}"}],"structuredContent":{"status":"success","data":[{"date":"2026-09-28","max_temp_c":"34","min_temp_c":"25","avg_temp_c":"29","condition":"Sunny","humidity":"50","wind_speed_kmph":"12","chance_of_rain":"0","chance_of_snow":"0","uv_index":"7"}],"isCached":false},"isError":false}}
 ```
+
+### 6. Kubernetes Deployment (Helm)
+You can deploy the MCP server to Kubernetes using the provided Helm chart. The chart is located in the `helm-mcp` directory.
+
+To deploy the MCP server:
+```powershell
+helm upgrade --install weather-mcp .\helm-mcp --namespace default
+```
+
+**Key configurations (`helm-mcp/values.yaml`):**
+- **Image**: `asia-south2-docker.pkg.dev/python-project-1st-sep/artifact-ai-python-weather-agent/ai-python-weather-mcp:1.0`
+- **Port**: 8100
+- **Ingress**: `weather-mcp.example.com/mcp`
+
+The deployment runs 3 replicas by default with resource limits for stability.
