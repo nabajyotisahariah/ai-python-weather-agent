@@ -26,13 +26,7 @@ async def get_weather(city: str) -> AgentResponse:
     if not city:
         raise ValueError("City is required")
 
-    result = await weather_service.get_current_weather(city)
-
-    return {
-        "status": 'success',
-        "data": result,
-        "isCached": True,
-    }
+    return await weather_service.get_current_weather(city)
 
 
 async def get_weather_forecast(
@@ -59,11 +53,6 @@ async def get_weather_forecast(
         raise ValueError("days must be between 1 and 7")
 
    
-    forecasts = await  weather_forcast_service.get_weather_forecast(city, days)
-    
-    return {
-            "status": 'success',
-            "data": forecasts,
-            "isCached": True,
-    }
+    return await  weather_forcast_service.get_weather_forecast(city, days)
+
 
