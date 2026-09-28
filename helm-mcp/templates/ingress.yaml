@@ -4,7 +4,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 
 metadata:
-  name: {{ .Release.Name }}-mcp-ingress
+  name: {{ .Release.Name }}-ingress
 
   annotations:
     {{- range $key, $value := .Values.ingress.annotations }}
@@ -33,7 +33,7 @@ spec:
 
             backend:
               service:
-                name: {{ $.Release.Name }}-mcp-service
+                name: {{ $.Release.Name }}-service
                 port:
                   number: {{ $.Values.service.port }}
 

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 
 metadata:
-  name: {{ .Release.Name }}-mcp
+  name: {{ .Release.Name }}-deployment
 
 spec:
   replicas: {{ .Values.replicaCount }}

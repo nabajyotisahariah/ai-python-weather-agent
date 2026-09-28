@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 
 metadata:
-  name: {{ .Release.Name }}-mcp-service
+  name: {{ .Release.Name }}-service
 
 spec:
   selector:
