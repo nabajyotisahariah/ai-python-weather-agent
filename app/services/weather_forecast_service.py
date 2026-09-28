@@ -39,8 +39,8 @@ class WeatherForcastService(WeatherForecastInterface):
         self.cache = AsyncRedisCache(redis_client)
 
     @staticmethod
-    def _cache_key(city: str) -> str:
-        return f"weather:current:{city.casefold()}"
+    def _cache_key(city: str, days: int) -> str:
+        return f"weather:forecast:{city.casefold()}:{days}"
 
     @staticmethod
     def _report_cache_key(provider: str, city: str) -> str:
@@ -79,53 +79,69 @@ class WeatherForcastService(WeatherForecastInterface):
         if not city:
             raise CityNotFoundError("City name is required")
 
+        cache_key = self._cache_key(city, days)
+        cached_forecast = await self.cache.get(cache_key)
+        
+        if cached_forecast and "data" in cached_forecast:
+            return {
+                "status": "success",
+                "data": cached_forecast["data"],
+                "isCached": True,
+            }
         
         url = f"{self.base_url.rstrip('/')}/{quote(city, safe='')}"
-        async with httpx.AsyncClient(timeout=settings.weather_timeout_seconds) as client:
-            response = await client.get(
-                url,
-                params={"format": "j1"},
-            )
-    
-        response.raise_for_status()
+        try:
+            async with httpx.AsyncClient(timeout=settings.weather_timeout_seconds) as client:
+                response = await client.get(
+                    url,
+                    params={"format": "j1"},
+                )
+        
+            if response.status_code == 404:
+                raise CityNotFoundError(f"City '{city}' not found.")
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.error("Weather provider error: %s", exc)
+            raise WeatherProviderError(f"Failed to fetch weather data: {exc}") from exc
     
         data = response.json()
-        print("data ",data)
         
         forecasts = []
-        # for item in data.get("weather", [])[:days]:
+        for item in data.get("weather", [])[:days]:
     
-        #     hourly = item.get("hourly", [])
+            hourly = item.get("hourly", [])
     
-        #     # Get a representative weather condition.
-        #     # wttr.in provides multiple hourly entries per day.
-        #     current_hour = hourly[len(hourly) // 2] if hourly else {}
+            # Get a representative weather condition.
+            # wttr.in provides multiple hourly entries per day.
+            current_hour = hourly[len(hourly) // 2] if hourly else {}
     
-        #     weather_desc = current_hour.get("weatherDesc", [{}])
+            weather_desc = current_hour.get("weatherDesc", [{}])
     
-        #     forecasts.append(
-        #         {
-        #             "date": item.get("date"),
-        #             "max_temp_c": item.get("maxtempC"),
-        #             "min_temp_c": item.get("mintempC"),
-        #             "avg_temp_c": item.get("avgtempC"),
-        #             "condition": (
-        #                 weather_desc[0].get("value")
-        #                 if weather_desc
-        #                 else None
-        #             ),
-        #             "humidity": current_hour.get("humidity"),
-        #             "wind_speed_kmph": current_hour.get("windspeedKmph"),
-        #             "chance_of_rain": current_hour.get("chanceofrain"),
-        #             "chance_of_snow": current_hour.get("chanceofsnow"),
-        #             "uv_index": item.get("uvIndex"),
-        #         }
-        #     )
+            forecasts.append(
+                {
+                    "date": item.get("date"),
+                    "max_temp_c": item.get("maxtempC"),
+                    "min_temp_c": item.get("mintempC"),
+                    "avg_temp_c": item.get("avgtempC"),
+                    "condition": (
+                        weather_desc[0].get("value")
+                        if weather_desc
+                        else None
+                    ),
+                    "humidity": current_hour.get("humidity"),
+                    "wind_speed_kmph": current_hour.get("windspeedKmph"),
+                    "chance_of_rain": current_hour.get("chanceofrain"),
+                    "chance_of_snow": current_hour.get("chanceofsnow"),
+                    "uv_index": item.get("uvIndex"),
+                }
+            )
 
+        # Cache the resulting forecast
+        await self.cache.set(cache_key, {"data": forecasts}, ex=3600)
             
         return {
             "status": 'success',
             "data": forecasts,
-            "isCached": True,
+            "isCached": False,
         }
-        
+

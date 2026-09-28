@@ -1,6 +1,5 @@
 
 from typing import Literal
-
 from pydantic import BaseModel, Field
 
 class WeatherRequest(BaseModel):
@@ -15,9 +14,11 @@ class WeatherResponse(BaseModel):
     description: str
     wind_speed: str | int | float
 
-
 class AgentResponse(BaseModel):
     status: Literal["ok", "fail", "success"]
     message: str | None = None
-    data: dict[str, str | int | float | object] | None = None
-    isCached: bool = Field(default=False, description="Indicates if the response was served from cache")
+    data: dict | list | None = None
+    isCached: bool = Field(
+        default=False,
+        description="Indicates if the response was served from cache"
+    )
