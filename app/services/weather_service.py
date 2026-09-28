@@ -10,8 +10,8 @@ from redis.asyncio import Redis
 from app.agents.crewai import build_weather_crew
 from app.agents.langgraph import run_weather_agent as run_langgraph_weather_agent
 from app.agents.autogen import run_weather_agent as run_autogen_weather_agent
-from app.agents.google_adk import run_weather_agent as run_google_adk_weather_agent
-from app.services.interface.weather_service_interface import WeatherServiceInterface
+#from app.agents.google_adk import run_weather_agent as run_google_adk_weather_agent
+from app.services.interface.weather_interface import WeatherServiceInterface
 from app.config import settings
 from app.schema.weather import AgentResponse
 from app.utils.redis_cache import AsyncRedisCache
@@ -188,26 +188,26 @@ class WeatherService(WeatherServiceInterface):
             await self._cache_report("autogen", city, report)
             return report
 
-    async def get_google_adk_weather_report(self, city: str) -> AgentResponse:
-        """Run the Google ADK weather agent without blocking the API event loop."""
-        city = city.strip()
-        cached_report = await self._get_cached_report("google-adk", city)
-        if cached_report:
-            return cached_report
+    # async def get_google_adk_weather_report(self, city: str) -> AgentResponse:
+    #     """Run the Google ADK weather agent without blocking the API event loop."""
+    #     city = city.strip()
+    #     cached_report = await self._get_cached_report("google-adk", city)
+    #     if cached_report:
+    #         return cached_report
 
-        with observe_operation("weather.agent.google_adk", input_data={"city": city}) as observation:
-            try:
-                logger.info("Running Google ADK weather agent for city: %s", city)
-                result = await asyncio.to_thread(run_google_adk_weather_agent, city)
-                if not result:
-                    raise ValueError("Google ADK returned an empty response")
-            except Exception as exc:
-                update_observation(observation, output={"error": str(exc)})
-                logger.exception("Google ADK weather agent failed for city: %s", city)
-                raise WeatherProviderError("Weather assistant unavailable") from exc
+    #     with observe_operation("weather.agent.google_adk", input_data={"city": city}) as observation:
+    #         try:
+    #             logger.info("Running Google ADK weather agent for city: %s", city)
+    #             result = await asyncio.to_thread(run_google_adk_weather_agent, city)
+    #             if not result:
+    #                 raise ValueError("Google ADK returned an empty response")
+    #         except Exception as exc:
+    #             update_observation(observation, output={"error": str(exc)})
+    #             logger.exception("Google ADK weather agent failed for city: %s", city)
+    #             raise WeatherProviderError("Weather assistant unavailable") from exc
 
-            logger.info("Google ADK weather report generated for city: %s", city)
-            report = {"status": "ok", "message": result}
-            update_observation(observation, output=report, metadata={"is_cached": False})
-            await self._cache_report("google-adk", city, report)
-            return report
+    #         logger.info("Google ADK weather report generated for city: %s", city)
+    #         report = {"status": "ok", "message": result}
+    #         update_observation(observation, output=report, metadata={"is_cached": False})
+    #         await self._cache_report("google-adk", city, report)
+    #         return report

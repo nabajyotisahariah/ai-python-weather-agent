@@ -4,7 +4,7 @@ from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
 )
-from app.services.interface.weather_service_interface import WeatherServiceInterface
+from app.services.interface.weather_interface import WeatherServiceInterface
 from app.services.weather_service import WeatherService
 from app.schema.weather import AgentResponse, WeatherRequest, WeatherResponse
 import logging
@@ -94,20 +94,20 @@ async def get_autogen_weather_route(
         return assistant_error_response()
 
 
-@router.get("/weather/google-adk")
-async def get_google_adk_weather_route(
-    request: WeatherRequest = Depends(),
-    service: WeatherServiceInterface = Depends(get_weather_service),
-) -> AgentResponse:
-    """Return an Google ADK-generated weather summary for a city."""
-    try:
-        logger.info("Fetching Google ADK weather report for city: %s", request.city.strip())
-        return await service.get_google_adk_weather_report(request.city.strip())
-    except CityNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError:
-        logger.warning("Google ADK weather provider failed for city: %s", request.city.strip())
-        return assistant_error_response()
-    except Exception as exc:
-        logger.exception("Unexpected Google ADK weather error for city: %s", request.city.strip())
-        return assistant_error_response()
+# @router.get("/weather/google-adk")
+# async def get_google_adk_weather_route(
+#     request: WeatherRequest = Depends(),
+#     service: WeatherServiceInterface = Depends(get_weather_service),
+# ) -> AgentResponse:
+#     """Return an Google ADK-generated weather summary for a city."""
+#     try:
+#         logger.info("Fetching Google ADK weather report for city: %s", request.city.strip())
+#         return await service.get_google_adk_weather_report(request.city.strip())
+#     except CityNotFoundError as exc:
+#         raise HTTPException(status_code=404, detail=str(exc)) from exc
+#     except WeatherProviderError:
+#         logger.warning("Google ADK weather provider failed for city: %s", request.city.strip())
+#         return assistant_error_response()
+#     except Exception as exc:
+#         logger.exception("Unexpected Google ADK weather error for city: %s", request.city.strip())
+#         return assistant_error_response()
