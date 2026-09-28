@@ -2,12 +2,17 @@
 
 FastAPI service for current weather data and AI-generated weather summaries. Weather data is retrieved from [wttr.in](https://wttr.in), while summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
+> **🚀 New Feature: Model Context Protocol (MCP)**
+> We now support MCP for seamless tool integration. Please refer to the [MCP Integration Guide (README-MCP.md)](README-MCP.md) for full details on running and querying the MCP server.
+
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
 ## Features
 
 - Current weather by city
+- Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
+- **Model Context Protocol (MCP)** server capability
 - Redis caching for weather data and generated reports
 - Health-check endpoint
 - Pydantic request and response validation
@@ -31,6 +36,10 @@ Create and activate a virtual environment in PowerShell:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+ source .venv/Scripts/activate (bash)
+
+ $ python --version
+Python 3.10.5
 ```
 
 Install the dependencies:
@@ -61,18 +70,20 @@ WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
 REDIS_URL=redis://localhost:6379/0
 REDIS_CACHE_TTL_SECONDS=3600
+LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
+LANGFUSE_SECRET_KEY=your-langfuse-secret-key
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
 ```
 
-`OPENAI_API_KEY` is required in development. `GOOGLE_API_KEY` is required when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
+`OPENAI_API_KEY` is required in development because CrewAI, LangGraph, and AutoGen use OpenAI. `GOOGLE_API_KEY` is required only when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
 
 ### Langfuse observability
 
-Langfuse tracing is optional. Add these values to `.env` to capture weather requests and agent operations in Langfuse:
+Langfuse tracing is optional. The values above enable tracing when both keys are valid:
 
 ```env
 LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
 LANGFUSE_SECRET_KEY=your-langfuse-secret-key
-LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
 ```
 
 When both keys are configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
@@ -195,21 +206,66 @@ Example response for a fresh request:
 }
 ```
 
-### AI weather summaries
+### Weather Forecast
+
+```http
+GET /api/v1/weather/forecast?city=Delhi
+```
+
+PowerShell:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/forecast?city=Delhi"
+```
+
+Example response:
+
+```json
+[
+  {
+    "date": "2026-09-26",
+    "max_temp_c": "34",
+    "min_temp_c": "25",
+    "avg_temp_c": "29",
+    "condition": "Sunny",
+    "humidity": "50",
+    "wind_speed_kmph": "12",
+    "chance_of_rain": "0",
+    "chance_of_snow": "0",
+    "uv_index": "7"
+  },
+  {
+    "date": "2026-09-27",
+    "max_temp_c": "33",
+    "min_temp_c": "24",
+    "avg_temp_c": "28",
+    "condition": "Partly cloudy",
+    "humidity": "55",
+    "wind_speed_kmph": "15",
+    "chance_of_rain": "10",
+    "chance_of_snow": "0",
+    "uv_index": "6"
+  }
+]
+```
+
+
+
+### AI Weather Summaries
 
 The following endpoints return an object with `status` and `message` fields:
 
 ```http
-GET /api/v1/weather/crewai?city=Delhi
-GET /api/v1/weather/langgraph?city=Delhi
-GET /api/v1/weather/autogen?city=Delhi
-GET /api/v1/weather/google-adk?city=Delhi
+GET /api/v1/weather/crewai?city=What is the weather of Delhi
+GET /api/v1/weather/langgraph?city=What is the temp of Delhi
+GET /api/v1/weather/autogen?city=tell me weather of Delhi
+GET /api/v1/weather/google-adk?city=weather of Delhi
 ```
 
 PowerShell example:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=Delhi"
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=What is the weather of Delhi"
 ```
 
 Example response:
@@ -244,6 +300,7 @@ app/
 ├── tools/               # Agent weather tools
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
+├── weather-mcp.py       # MCP (Model Context Protocol) server configuration
 └── utils/               # Logging and Redis cache helpers
 helm-config/             # Kubernetes Helm chart
 tests/                   # API and service tests
@@ -251,7 +308,9 @@ tests/                   # API and service tests
 
 ## Kubernetes
 
-The `helm-config` directory contains the Helm chart for deploying the API. Update the image repository, tag, ingress host, and runtime secrets in the chart values before deploying to a cluster.
+The `helm-config` directory contains the Helm chart for deploying the API. The production configuration loads secrets from Google Secret Manager through `GCP_SECRET_NAME` and requires `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `REDIS_URL` as environment variables. Configure those values through your cluster's secret management before deploying.
+
+Update the image repository, tag, ingress host, and resource settings in `helm-config/values.yaml` before deploying:
 
 ```powershell
 helm upgrade --install weather-agent .\helm-config

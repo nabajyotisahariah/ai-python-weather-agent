@@ -8,6 +8,9 @@ image:
 container:
   port: 8000
 
+environment:
+  ENVIRONMENT: production
+
 resources:
   requests:
     cpu: "250m"

@@ -1,15 +1,55 @@
-#use lowercase Python field names and let Pydantic read the uppercase environment variables.
+# Use lowercase Python field names and let Pydantic read uppercase environment variables.
 
+from io import StringIO
+import logging
+import os
 from pathlib import Path
 import sys
 
+from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import logging
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_FILE = BASE_DIR / ".env"
+DEFAULT_SECRET_NAME = (
+    "projects/1040682241529/secrets/"
+    "python-ai-weather-application/versions/latest"
+)
+
+
+def get_secret(secret_name: str) -> str:
+    """Read a secret version from Google Secret Manager."""
+    from google.cloud import secretmanager
+
+    client = secretmanager.SecretManagerServiceClient()
+    response = client.access_secret_version(request={"name": secret_name})
+    return response.payload.data.decode("UTF-8")
+
+
+def load_production_secrets() -> None:
+    """Load dotenv-style production secrets into the process environment."""
+    secret_name = os.getenv("GCP_SECRET_NAME", DEFAULT_SECRET_NAME)
+    secret_data = get_secret(secret_name)
+    secret_values = dotenv_values(stream=StringIO(secret_data))
+    #logger.info("Production secrets loaded successfully. Keys: %s",list(secret_values.keys()))
+    print("Production secrets loaded successfully. Keys:", secret_values)
+    for name, value in secret_values.items():
+        if value is not None:
+            os.environ.setdefault(name, value)
+
+    logger.info("Loaded production configuration from Secret Manager")
+
+
+environment = os.getenv(
+    "ENVIRONMENT",
+    dotenv_values(ENV_FILE).get("environment", "development"),
+).lower()
+logger.info(f"Environment: {environment}")
+
+if environment == "production":
+    load_production_secrets()
 
 
 class Settings(BaseSettings):
@@ -45,7 +85,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-print("Loaded settings from %s", settings)
+logger.info("Loaded settings for environment: %s", settings.environment)
 
 
 def validate_settings() -> None:
@@ -53,11 +93,11 @@ def validate_settings() -> None:
     # ---------------------------------------------
     # Development
     # ---------------------------------------------
-    print("Validating settings for environment: %s", settings.environment)
+    logger.info("Validating settings for environment: %s", settings.environment)
     if settings.environment == "development":
 
         if not ENV_FILE.exists():
-            print(f"ERROR: .env file is not present: {ENV_FILE}")
+            logger.error(f"ERROR: .env file is not present: {ENV_FILE}")
             sys.exit(1)
 
         required = {
@@ -86,7 +126,7 @@ def validate_settings() -> None:
         }
 
     else:
-        print(
+        logger.error(
             f"ERROR: Unsupported environment: "
             f"{settings.environment}"
         )
@@ -101,10 +141,10 @@ def validate_settings() -> None:
     ]
 
     if missing:
-        print("ERROR: Missing required configuration:")
+        logger.error("ERROR: Missing required configuration:")
 
         for name in missing:
-            print(f"  - {name}")
+            logger.error(f"  - {name}")
 
         sys.exit(1)
 

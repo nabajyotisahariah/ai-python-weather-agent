@@ -15,7 +15,7 @@ from app.config import settings
 setup_logging()
 logging.info("Starting Weather Assistant API")
 
-from app.route import health, weather
+from app.route import health, weather, weather_forecast
 
 app = FastAPI(
     title="Weather Assistant API",
@@ -53,6 +53,7 @@ logging.info("OpenAI Model: %s", settings.openai_api_model)
 
 # Include Routers
 app.include_router(weather.router, prefix="/api/v1", tags=["Weather"])
+app.include_router(weather_forecast.router, prefix="/api/v1", tags=["Weather Forcast"])
 app.include_router(health.router, prefix="/api/v1", tags=["System"])
 
 
