@@ -1,0 +1,29 @@
+replicaCount: 3
+
+image:
+  repository: asia-south2-docker.pkg.dev/python-project-1st-sep/artifact-ai-python-weather-agent/ai-python-weather-mcp
+  tag: "1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8100
+
+containerPort: 8100
+
+environment:
+  ENVIRONMENT: production
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: weather-mcp.example.com
