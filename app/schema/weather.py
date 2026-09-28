@@ -17,6 +17,7 @@ class WeatherResponse(BaseModel):
 
 
 class AgentResponse(BaseModel):
-    status: Literal["ok", "fail"]
-    message: str
+    status: Literal["ok", "fail", "success"]
+    message: str | None = None
+    data: dict[str, str | int | float | object] | None = None
     isCached: bool = Field(default=False, description="Indicates if the response was served from cache")

@@ -68,7 +68,7 @@ class WeatherService(WeatherServiceInterface):
 
     
 
-    async def get_current_weather(self, city: str) -> dict[str, str | int | float]:
+    async def get_current_weather(self, city: str) -> AgentResponse:
         city = city.strip()
         if not city:
             raise CityNotFoundError("City name is required")
@@ -150,7 +150,7 @@ class WeatherService(WeatherServiceInterface):
         with observe_operation("weather.agent.langgraph", input_data={"city": city}) as observation:
             try:
                 logger.info("Running LangGraph weather agent for city: %s", city)
-                result = await asyncio.to_thread(run_langgraph_weather_agent, city)
+                result = await run_langgraph_weather_agent(city)
                 if not result:
                     raise ValueError("LangGraph returned an empty response")
             except Exception as exc:

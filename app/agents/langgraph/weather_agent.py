@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated, TypedDict
 
+import httpx
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
@@ -17,15 +18,14 @@ class WeatherState(TypedDict):
     messages: Annotated[list, add_messages]
 
 
-def _build_graph():
+def _build_graph(llm: ChatOpenAI):
     tools: list[BaseTool] = [get_weather]
-    llm = ChatOpenAI(api_key=settings.openai_api_key, model=settings.openai_api_model, temperature=0)
     llm_with_tools = llm.bind_tools(tools)
 
     logger.info("LangGraph weather agent initialized with model: %s", settings.openai_api_model)
 
-    def weather_agent(state: WeatherState):
-        response = llm_with_tools.invoke(state["messages"])
+    async def weather_agent(state: WeatherState):
+        response = await llm_with_tools.ainvoke(state["messages"])
         return {"messages": [response]}
 
     def should_continue(state: WeatherState):
@@ -42,11 +42,22 @@ def _build_graph():
     return graph.compile()
 
 
-def run_weather_agent(city: str) -> str:
+async def run_weather_agent(city: str) -> str:
     """Run the LangGraph weather assistant and return its final response."""
     logger.info("Running LangGraph weather agent for city: %s", city)
-    result = _build_graph().invoke(
-        {"messages": [HumanMessage(content=f"What is the weather in {city}?")]}
-    )
+    
+    # Provide an explicit client and gracefully clean it up avoiding thread pool closure leaks
+    async with httpx.AsyncClient() as client:
+        llm = ChatOpenAI(
+            api_key=settings.openai_api_key, 
+            model=settings.openai_api_model, 
+            temperature=0,
+            http_async_client=client
+        )
+        graph = _build_graph(llm)
+        result = await graph.ainvoke(
+            {"messages": [HumanMessage(content=f"What is the weather in {city}?")]}
+        )
+        
     logger.info("LangGraph weather agent completed for city: %s", city)
     return result["messages"][-1].content

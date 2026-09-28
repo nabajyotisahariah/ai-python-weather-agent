@@ -64,7 +64,7 @@ class WeatherForcastService(WeatherForecastInterface):
 
     
 
-    async def get_weather_forecast(self, city: str, days: int = 3) -> dict[str, str | int | float]:
+    async def get_weather_forecast(self, city: str, days: int = 3) -> AgentResponse:
         """
         Get weather forecast for a city.
 
@@ -79,54 +79,53 @@ class WeatherForcastService(WeatherForecastInterface):
         if not city:
             raise CityNotFoundError("City name is required")
 
-        with observe_operation("weather:forecast:current", input_data={"city": city}) as observation:
-            cache_key = self._cache_key(city)
-            cached_weather = await self.cache.get(cache_key)
-            if cached_weather:
-                update_observation(observation, output=cached_weather, metadata={"is_cached": True})
-                return cached_weather
+        
+        url = f"{self.base_url.rstrip('/')}/{quote(city, safe='')}"
+        async with httpx.AsyncClient(timeout=settings.weather_timeout_seconds) as client:
+            response = await client.get(
+                url,
+                params={"format": "j1"},
+            )
+    
+        response.raise_for_status()
+    
+        data = response.json()
+        print("data ",data)
+        
+        forecasts = []
+        # for item in data.get("weather", [])[:days]:
+    
+        #     hourly = item.get("hourly", [])
+    
+        #     # Get a representative weather condition.
+        #     # wttr.in provides multiple hourly entries per day.
+        #     current_hour = hourly[len(hourly) // 2] if hourly else {}
+    
+        #     weather_desc = current_hour.get("weatherDesc", [{}])
+    
+        #     forecasts.append(
+        #         {
+        #             "date": item.get("date"),
+        #             "max_temp_c": item.get("maxtempC"),
+        #             "min_temp_c": item.get("mintempC"),
+        #             "avg_temp_c": item.get("avgtempC"),
+        #             "condition": (
+        #                 weather_desc[0].get("value")
+        #                 if weather_desc
+        #                 else None
+        #             ),
+        #             "humidity": current_hour.get("humidity"),
+        #             "wind_speed_kmph": current_hour.get("windspeedKmph"),
+        #             "chance_of_rain": current_hour.get("chanceofrain"),
+        #             "chance_of_snow": current_hour.get("chanceofsnow"),
+        #             "uv_index": item.get("uvIndex"),
+        #         }
+        #     )
 
-            url = f"{self.base_url.rstrip('/')}/{quote(city, safe='')}"
-            async with httpx.AsyncClient(timeout=settings.weather_timeout_seconds) as client:
-                response = await client.get(
-                    url,
-                    params={"format": "j1"},
-                )
-        
-            response.raise_for_status()
-        
-            data = response.json()
-            print("data ",data)
             
-            forecasts = []
+        return {
+            "status": 'success',
+            "data": forecasts,
+            "isCached": True,
+        }
         
-            for item in data.get("weather", [])[:days]:
-        
-                hourly = item.get("hourly", [])
-        
-                # Get a representative weather condition.
-                # wttr.in provides multiple hourly entries per day.
-                current_hour = hourly[len(hourly) // 2] if hourly else {}
-        
-                weather_desc = current_hour.get("weatherDesc", [{}])
-        
-                forecasts.append(
-                    {
-                        "date": item.get("date"),
-                        "max_temp_c": item.get("maxtempC"),
-                        "min_temp_c": item.get("mintempC"),
-                        "avg_temp_c": item.get("avgtempC"),
-                        "condition": (
-                            weather_desc[0].get("value")
-                            if weather_desc
-                            else None
-                        ),
-                        "humidity": current_hour.get("humidity"),
-                        "wind_speed_kmph": current_hour.get("windspeedKmph"),
-                        "chance_of_rain": current_hour.get("chanceofrain"),
-                        "chance_of_snow": current_hour.get("chanceofsnow"),
-                        "uv_index": item.get("uvIndex"),
-                    }
-                )
-        
-            return forecasts
