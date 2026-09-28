@@ -3,13 +3,14 @@ import httpx
 
 from app.services.weather_service import WeatherService
 from app.services.weather_forecast_service import WeatherForcastService
-from app.config import settings
+#from app.config import settings
+from app.schema.weather import AgentResponse
 
 weather_service = WeatherService()
 weather_forcast_service = WeatherForcastService()
 
 
-async def get_weather(city: str) -> dict[str, Any]:
+async def get_weather(city: str) -> AgentResponse:
     """
     Get current weather information for a city.
 
@@ -28,15 +29,16 @@ async def get_weather(city: str) -> dict[str, Any]:
     result = await weather_service.get_current_weather(city)
 
     return {
-        "city": city,
-        "weather": result,
+        "status": 'success',
+        "data": result,
+        "isCached": True,
     }
 
 
 async def get_weather_forecast(
     city: str,
     days: int = 3,
-) -> list[dict]:
+) -> AgentResponse:
     """
     Get weather forecast for a city.
 
@@ -57,10 +59,11 @@ async def get_weather_forecast(
         raise ValueError("days must be between 1 and 7")
 
    
-    result = await  weather_forcast_service.get_forcast_weather(city, days)
+    forecasts = await  weather_forcast_service.get_weather_forecast(city, days)
     
     return {
-        "city": city,
-        "weather": result,
+            "status": 'success',
+            "data": forecasts,
+            "isCached": True,
     }
 

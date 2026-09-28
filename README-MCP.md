@@ -79,8 +79,6 @@ data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabili
 
 ### 3. List Available Tools
 
-Once initialized, you can query the server for a list of available tools. *(Note: Depending on your setup, you may need to pass an `Mcp-Session-Id` header returned from initialization).*
-
 **Request:**
 ```bash
 curl -i http://localhost:8100/mcp \
@@ -110,7 +108,7 @@ event: message
 data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"get_weather","description":"\n    Get current weather information for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n\n    Returns:\n        Current weather information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"}},"required":["city"],"title":"get_weatherArguments","type":"object"},"outputSchema":{"additionalProperties":true,"title":"get_weatherDictOutput","type":"object"}},{"name":"get_weather_forecast","description":"\n    Get weather forecast for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n        days: Number of forecast days, from 1 to 7.\n\n    Returns:\n        Weather forecast information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"},"days":{"default":3,"title":"Days","type":"integer"}},"required":["city"],"title":"get_weather_forecastArguments","type":"object"},"outputSchema":{"properties":{"result":{"items":{"additionalProperties":true,"type":"object"},"title":"Result","type":"array"}},"required":["result"],"title":"get_weather_forecastOutput","type":"object"}}]}}
 ```
 
-### 4. Call a Tool
+### 4. Call a Tool get_weather
 
 Finally, execute a specific tool on the MCP server. In this example, we call the `get_weather` tool for the city of Delhi.
 
@@ -146,4 +144,27 @@ Transfer-Encoding: chunked
 
 event: message
 data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"city\": \"Delhi\",\n  \"weather\": {\n    \"city\": \"Delhi\",\n    \"temperature\": \"24\",\n    \"feels_like\": \"26\",\n    \"humidity\": \"74\",\n    \"description\": \"Partly Cloudy \",\n    \"wind_speed\": \"7\"\n  }\n}"}],"structuredContent":{"city":"Delhi","weather":{"city":"Delhi","temperature":"24","feels_like":"26","humidity":"74","description":"Partly Cloudy ","wind_speed":"7"}},"isError":false}}
+```
+
+### 5. Call a Tool get_weather_forecast
+
+Finally, execute a specific tool on the MCP server. In this example, we call the `get_weather` tool for the city of Delhi.
+
+**Request:**
+```bash
+curl -i http://localhost:8100/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "get_weather_forecast",
+      "arguments": {
+        "city": "Delhi"
+      }
+    }
+  }'
 ```

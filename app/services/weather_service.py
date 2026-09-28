@@ -78,7 +78,8 @@ class WeatherService(WeatherServiceInterface):
             cached_weather = await self.cache.get(cache_key)
             if cached_weather:
                 update_observation(observation, output=cached_weather, metadata={"is_cached": True})
-                return cached_weather
+                return {"status": 'success', "data": cached_weather, "isCached": True,
+            }
 
             url = f"{self.base_url.rstrip('/')}/{quote(city, safe='')}"
             params = {"format": "j1"}
@@ -110,7 +111,11 @@ class WeatherService(WeatherServiceInterface):
 
             await self.cache.set(cache_key, weather)
             update_observation(observation, output=weather, metadata={"is_cached": False})
-            return weather
+            return {
+                "status": 'success',
+                "data": weather,
+                "isCached": False,
+            }
 
     async def get_crewai_weather_report(self, city: str) -> AgentResponse:
         """Run the CrewAI weather agent without blocking the API event loop."""
@@ -135,7 +140,7 @@ class WeatherService(WeatherServiceInterface):
                 raise WeatherProviderError("Weather assistant unavailable") from exc
 
             logger.info("LLM weather report for city: %s", city)
-            report = {"status": "ok", "message": str(result)}
+            report = {"status": "success", "message": str(result)}
             update_observation(observation, output=report, metadata={"is_cached": False})
             await self._cache_report("crewai", city, report)
             return report
@@ -159,7 +164,7 @@ class WeatherService(WeatherServiceInterface):
                 raise WeatherProviderError("Weather assistant unavailable") from exc
 
             logger.info("LangGraph weather report generated for city: %s", city)
-            report = {"status": "ok", "message": result}
+            report = {"status": "success", "message": result}
             update_observation(observation, output=report, metadata={"is_cached": False})
             await self._cache_report("langgraph", city, report)
             return report
@@ -183,7 +188,7 @@ class WeatherService(WeatherServiceInterface):
                 raise WeatherProviderError("Weather assistant unavailable") from exc
 
             logger.info("AutoGen weather report generated for city: %s", city)
-            report = {"status": "ok", "message": result}
+            report = {"status": "success", "message": result}
             update_observation(observation, output=report, metadata={"is_cached": False})
             await self._cache_report("autogen", city, report)
             return report
@@ -207,7 +212,7 @@ class WeatherService(WeatherServiceInterface):
     #             raise WeatherProviderError("Weather assistant unavailable") from exc
 
     #         logger.info("Google ADK weather report generated for city: %s", city)
-    #         report = {"status": "ok", "message": result}
+    #         report = {"status": "success", "message": result}
     #         update_observation(observation, output=report, metadata={"is_cached": False})
     #         await self._cache_report("google-adk", city, report)
     #         return report
