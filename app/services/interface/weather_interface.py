@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-
+from app.schema.weather import AgentResponse
 
 class WeatherServiceInterface(ABC):
 
     @abstractmethod
-    async def get_current_weather(self, city: str) -> dict[str, str | int | float]:
+    async def get_current_weather(self, city: str) -> AgentResponse:
             """Return current weather data for a city."""
             raise NotImplementedError
     

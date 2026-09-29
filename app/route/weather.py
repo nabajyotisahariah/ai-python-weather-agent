@@ -28,7 +28,7 @@ def assistant_error_response() -> JSONResponse:
 async def get_current_weather_route(
     request: WeatherRequest = Depends(),
     service: WeatherServiceInterface = Depends(get_weather_service),
-) -> WeatherResponse:
+) -> AgentResponse:
     """Return the current weather for a city."""
     try:
         logger.info("Fetching current weather for city: %s", request.city.strip())
