@@ -308,7 +308,7 @@ tests/                   # API and service tests
 
 ## Kubernetes
 
-The `helm-config` directory contains the Helm chart for deploying the API. The production configuration loads secrets from Google Secret Manager through `GCP_SECRET_NAME` and requires `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `REDIS_URL` as environment variables. Configure those values through your cluster's secret management before deploying.
+The `helm-config` directory contains the Helm chart for deploying the API. It requires `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `REDIS_URL` as environment variables. Configure those values through your cluster's secret management before deploying.
 
 Update the image repository, tag, ingress host, and resource settings in `helm-config/values.yaml` before deploying:
 

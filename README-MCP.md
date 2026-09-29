@@ -158,10 +158,3 @@ To deploy the MCP server:
 ```powershell
 helm upgrade --install weather-mcp .\helm-mcp --namespace default
 ```
-
-**Key configurations (`helm-mcp/values.yaml`):**
-- **Image**: `asia-south2-docker.pkg.dev/python-project-1st-sep/artifact-ai-python-weather-agent/ai-python-weather-mcp:1.0`
-- **Port**: 8100
-- **Ingress**: `weather-mcp.example.com/mcp`
-
-The deployment runs 3 replicas by default with resource limits for stability.
