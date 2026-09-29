@@ -48,8 +48,8 @@ environment = os.getenv(
 ).lower()
 logger.info(f"Environment: {environment}")
 
-if environment == "production":
-    load_production_secrets()
+#if environment == "production":
+#    load_production_secrets()
 
 
 class Settings(BaseSettings):

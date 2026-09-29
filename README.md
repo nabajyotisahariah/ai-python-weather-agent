@@ -39,7 +39,7 @@ python -m venv .venv
  source .venv/Scripts/activate (bash)
 
  $ python --version
-Python 3.10.5
+Python 3.11
 ```
 
 Install the dependencies:
