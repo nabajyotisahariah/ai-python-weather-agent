@@ -158,3 +158,18 @@ To deploy the MCP server:
 ```powershell
 helm upgrade --install weather-mcp .\helm-mcp --namespace default
 ```
+
+**Key configurations (`helm-mcp/values.yaml`):**
+- **Image**: `asia-south2-docker.pkg.dev/PROJECT/artifact-ai-python-weather-agent/ai-python-weather-mcp:1.0`
+- **Port**: 8100
+- **Ingress**: `weather-mcp.example.com/mcp`
+
+The deployment runs 3 replicas by default with resource limits for stability.
+
+### 7. Security: IP Whitelisting
+The MCP server enforces strict transport security. It only accepts requests from the following allowed hosts and origins:
+- `localhost`
+- `127.0.0.1`
+- `34.131.252.169` (Production IP)
+
+If you need to access the server from a different domain or IP, update the `transport_security` settings in `app/weather-mcp.py`.

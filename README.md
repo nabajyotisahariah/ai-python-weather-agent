@@ -17,6 +17,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Health-check endpoint
 - Pydantic request and response validation
 - CORS support for API clients
+- Security headers for HTTP responses
 - Structured logging and provider error handling
 - Interactive Swagger UI and ReDoc documentation
 
@@ -288,6 +289,19 @@ Repeated requests for the same provider and city can return `"isCached": true`.
 - `500`: an unexpected application error occurred
 
 Provider failures are logged and returned as safe API responses instead of exposing internal exceptions.
+## Security
+
+The API implements several HTTP security headers to protect against common web vulnerabilities:
+
+- **Strict-Transport-Security (HSTS)**: Enforces secure (HTTPS) connections to the server (`max-age=31536000; includeSubDomains`).
+- **X-Content-Type-Options**: Prevents the browser from interpreting files as a different MIME type to what is specified (`nosniff`).
+- **X-Frame-Options**: Protects against clickjacking by denying the rendering of the API in a frame (`DENY`).
+- **Content-Security-Policy (CSP)**: Helps detect and mitigate certain types of attacks, including Cross-Site Scripting (XSS) and data injection attacks (`default-src 'self'`).
+- **Referrer-Policy**: Controls how much referrer information should be included with requests (`strict-origin-when-cross-origin`).
+
+CORS is also configured to allow cross-origin requests. This can be restricted in production by configuring the `allow_origins` settings in `app/main.py`.
+
+
 
 ## Project Structure
 
