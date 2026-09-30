@@ -147,20 +147,9 @@ When the API runs inside a container, `REDIS_URL` must point to a Redis host rea
 Run the complete test suite from the project root:
 
 ```powershell
-python -m pytest -q
+python -m pytest tests/test_api.py -v
 ```
 
-Run tests with verbose output:
-
-```powershell
-python -m pytest -v
-```
-
-Run one test:
-
-```powershell
-python -m pytest tests/test_api.py::test_autogen_weather_returns_agent_response -q
-```
 
 The project pins AutoGen `0.7.5` and Langfuse `4.15.6` in `requirements.txt`.
 
@@ -198,12 +187,16 @@ Example response for a fresh request:
 
 ```json
 {
-  "city": "Delhi",
-  "temperature": "25",
-  "feels_like": "26",
-  "humidity": "60",
-  "description": "Sunny",
-  "wind_speed": "10"
+  "status": "success",
+  "data": {
+    "city": "Delhi",
+    "temperature": "25",
+    "feels_like": "26",
+    "humidity": "60",
+    "description": "Sunny",
+    "wind_speed": "10"
+  },
+  "isCached": false
 }
 ```
 
@@ -222,32 +215,36 @@ Invoke-RestMethod "http://localhost:8000/api/v1/weather/forecast?city=Delhi"
 Example response:
 
 ```json
-[
-  {
-    "date": "2026-09-26",
-    "max_temp_c": "34",
-    "min_temp_c": "25",
-    "avg_temp_c": "29",
-    "condition": "Sunny",
-    "humidity": "50",
-    "wind_speed_kmph": "12",
-    "chance_of_rain": "0",
-    "chance_of_snow": "0",
-    "uv_index": "7"
-  },
-  {
-    "date": "2026-09-27",
-    "max_temp_c": "33",
-    "min_temp_c": "24",
-    "avg_temp_c": "28",
-    "condition": "Partly cloudy",
-    "humidity": "55",
-    "wind_speed_kmph": "15",
-    "chance_of_rain": "10",
-    "chance_of_snow": "0",
-    "uv_index": "6"
-  }
-]
+{
+  "status": "success",
+  "data": [
+    {
+      "date": "2026-09-26",
+      "max_temp_c": "34",
+      "min_temp_c": "25",
+      "avg_temp_c": "29",
+      "condition": "Sunny",
+      "humidity": "50",
+      "wind_speed_kmph": "12",
+      "chance_of_rain": "0",
+      "chance_of_snow": "0",
+      "uv_index": "7"
+    },
+    {
+      "date": "2026-09-27",
+      "max_temp_c": "33",
+      "min_temp_c": "24",
+      "avg_temp_c": "28",
+      "condition": "Partly cloudy",
+      "humidity": "55",
+      "wind_speed_kmph": "15",
+      "chance_of_rain": "10",
+      "chance_of_snow": "0",
+      "uv_index": "6"
+    }
+  ],
+  "isCached": false
+}
 ```
 
 
@@ -273,7 +270,7 @@ Example response:
 
 ```json
 {
-  "status": "ok",
+  "status": "success",
   "message": "The current weather in Delhi is ...",
   "isCached": false
 }
@@ -316,7 +313,8 @@ app/
 ├── main.py              # FastAPI application
 ├── weather-mcp.py       # MCP (Model Context Protocol) server configuration
 └── utils/               # Logging and Redis cache helpers
-helm-config/             # Kubernetes Helm chart
+helm-config/             # Kubernetes Helm chart for Application
+helm-mcp/                # Kubernetes Helm chart for MCP
 tests/                   # API and service tests
 ```
 
