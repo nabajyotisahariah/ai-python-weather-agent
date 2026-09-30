@@ -11,16 +11,24 @@ import logging
 import uvicorn
 from app.utils.logger import setup_logging
 from app.config import settings
+from app.route import health, weather, weather_forecast
 
 setup_logging()
-logging.info("Starting Weather Assistant API")
+logging.info("Starting Weather Assistant API %s", settings.environment)
 
-from app.route import health, weather, weather_forecast
 
 app = FastAPI(
     title="Weather Assistant API",
-    description="Weather Assistant API provides current weather information for specified cities using the get_weather tool.",
-    version="0.1.0"
+    description=(
+        "Weather Assistant API provides current weather information "
+        "for specified cities using the get_weather tool."
+    ),
+    version="1.0.0",
+
+    # Disable API documentation in production
+    docs_url=None if settings.environment == "production"  else "/docs",
+    redoc_url=None if settings.environment == "production" else "/redoc",
+    openapi_url=None if settings.environment == "production" else "/openapi.json",
 )
 
 
@@ -38,13 +46,26 @@ async def handle_unexpected_exception(request: Request, exc: Exception) -> JSONR
         content={"status": "fail", "message": "Internal server error"},
     )
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    #allow_origins=["https://frontend-domain.com"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    #allow_methods=["*"],
+    #allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 logging.info("Initializing API routes")
