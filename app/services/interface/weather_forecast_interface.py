@@ -7,4 +7,9 @@ class WeatherForecastInterface(ABC):
     @abstractmethod
     async def get_weather_forecast(self, city: str, days: int = 3) -> AgentResponse:
             """Return current weather data for a city."""
+
+    @abstractmethod
+    async def get_weather_forcast_crewai(self, city: str) -> dict[str, str]:
+           """Return an LLM-generated weather report for a city."""
+           raise NotImplementedError
    

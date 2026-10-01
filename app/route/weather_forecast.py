@@ -24,7 +24,7 @@ def assistant_error_response() -> JSONResponse:
         content={"status": "fail", "message": "Weather assistant unavailable"},
     )
 
-@router.get("/weather/forecast")
+@router.get("/weather/forecast", response_model_exclude_none=True)
 async def get_weather_forcast_route(
     request: WeatherRequest = Depends(),
     service: WeatherForecastInterface = Depends(get_weather_forcast_service),
@@ -37,3 +37,21 @@ async def get_weather_forcast_route(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+@router.get("/weather/forecast/crewai", response_model_exclude_none=True)
+async def get_crewai_weather_route(
+    request: WeatherRequest = Depends(),
+    service: WeatherForecastInterface = Depends(get_weather_forcast_service),
+) -> AgentResponse:
+    """Return a CrewAI-generated weather summary for a city."""
+    try:
+        logger.info("Fetching CrewAI weather report for city: %s", request.city.strip())
+        return await service.get_weather_forcast_crewai(request.city.strip())
+    except CityNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WeatherProviderError:
+        logger.warning("CrewAI weather provider failed for city: %s", request.city.strip())
+        return assistant_error_response()
+    except Exception as exc:
+        logger.exception("Unexpected CrewAI weather error for city: %s", request.city.strip())
+        return assistant_error_response()

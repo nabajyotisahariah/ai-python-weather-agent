@@ -7,6 +7,7 @@ import httpx
 from redis.asyncio import Redis
 #from dotenv import load_dotenv
 
+from app.agents.crewai import build_weather_forecast_crew
 from app.services.interface.weather_forecast_interface import WeatherForecastInterface
 from app.config import settings
 from app.schema.weather import AgentResponse
@@ -145,3 +146,28 @@ class WeatherForcastService(WeatherForecastInterface):
             "isCached": False,
         }
 
+    async def get_weather_forcast_crewai(self, city: str) -> AgentResponse:
+        """Run the CrewAI weather forecast agent without blocking the API event loop."""
+        city = city.strip()
+        cached_report = await self._get_cached_report("crewai-forecast", city)
+        if cached_report:
+            return cached_report
+
+        with observe_operation("weather_forecast.agent.crewai", input_data={"city": city}) as observation:
+            try:
+                logger.info("Running CrewAI weather forecast agent for city: %s", city)
+                crew = build_weather_forecast_crew(city)
+                result = await asyncio.to_thread(crew.kickoff, inputs={"city": city})
+                result_str = str(result)
+                if not result_str:
+                    raise ValueError("CrewAI returned an empty response")
+            except Exception as exc:
+                update_observation(observation, output={"error": str(exc)})
+                logger.exception("CrewAI weather forecast agent failed for city: %s", city)
+                raise WeatherProviderError("Weather assistant unavailable") from exc
+
+            logger.info("CrewAI weather forecast report generated for city: %s", city)
+            report = {"status": "success", "message": result_str}
+            update_observation(observation, output=report, metadata={"is_cached": False})
+            await self._cache_report("crewai-forecast", city, report)
+            return report
