@@ -1,5 +1,6 @@
 # orchestrator/crewai/tools.py
 import logging
+from crewai import Crew
 from crewai.tools import tool
 
 from app.agents.crewai import build_weather_crew
@@ -8,7 +9,7 @@ from app.agents.crewai.weather_forecast_agent import build_weather_forecast_crew
 logger = logging.getLogger(__name__)
 
 def run_weather_agent(city: str) -> str:
-    weather_crew = build_weather_crew(city)
+    weather_crew: Crew = build_weather_crew(city)
     result = weather_crew.kickoff(
         inputs={"city": city},
     )
@@ -16,7 +17,7 @@ def run_weather_agent(city: str) -> str:
     return result.raw
 
 def run_forecast_agent(city: str, days: int = 7) -> str:
-    weather_crew = build_weather_forecast_crew(city, days)
+    weather_crew: Crew = build_weather_forecast_crew(city, days)
     result = weather_crew.kickoff(
         inputs={"city": city},
     )

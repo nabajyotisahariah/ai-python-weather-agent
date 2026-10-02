@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.route.weather import get_weather_service
-from app.route.weather_forecast import get_weather_forcast_service
+from app.route.weather_forecast import get_weather_forecast_service
 from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
@@ -68,7 +68,7 @@ class StubWeatherForecastService:
             "isCached": False
         }
 
-    async def get_weather_forcast_crewai(self, city: str) -> dict[str, str]:
+    async def get_weather_forecast_crewai(self, city: str) -> dict[str, str]:
         return {"status": "success", "message": f"CrewAI forecast report for {city}"}
 
 class FailingWeatherForecastService(StubWeatherForecastService):
@@ -122,7 +122,7 @@ class FakeHttpClient:
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     app.dependency_overrides[get_weather_service] = lambda: StubWeatherService()
-    app.dependency_overrides[get_weather_forcast_service] = lambda: StubWeatherForecastService()
+    app.dependency_overrides[get_weather_forecast_service] = lambda: StubWeatherForecastService()
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -253,7 +253,7 @@ def test_forecast_weather_returns_agent_response(client: TestClient) -> None:
 
 
 def test_forecast_weather_maps_city_not_found_to_404() -> None:
-    app.dependency_overrides[get_weather_forcast_service] = lambda: FailingWeatherForecastService()
+    app.dependency_overrides[get_weather_forecast_service] = lambda: FailingWeatherForecastService()
     try:
         with TestClient(app) as client:
             response = client.get("/api/v1/weather/forecast", params={"city": "Unknown"})
@@ -311,16 +311,16 @@ def test_unexpected_exception_uses_application_handler() -> None:
 def test_weather_agent_returns_agent_response(client: TestClient) -> None:
     # Just mock the run_weather_orchestrator for the test
     with patch("app.services.weather_agent_service.run_weather_orchestrator") as mock_run:
-        # Mock async function return
-        mock_run.return_value = "Mocked CrewAI Response"
         async def async_mock(*args, **kwargs):
             return "Mocked CrewAI Response"
+            
         mock_run.side_effect = async_mock
-        response = client.get("/api/v1/weather/agent", params={"city": "Delhi"})
-        
+        response = client.post("/api/v1/weather/agent", json={"city": "Delhi"})
+
         assert response.status_code == 200
         assert response.json() == {
             "status": "success",
             "message": "Mocked CrewAI Response",
             "isCached": False,
         }
+
