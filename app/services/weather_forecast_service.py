@@ -32,7 +32,7 @@ class WeatherProviderError(WeatherServiceError):
     """The weather provider could not return a valid response."""
 
 
-class WeatherForcastService(WeatherForecastInterface):
+class WeatherForecastService(WeatherForecastInterface):
     base_url: str = settings.weather_api_url
     timeout_seconds: float = settings.weather_timeout_seconds
 
@@ -146,7 +146,7 @@ class WeatherForcastService(WeatherForecastInterface):
             "isCached": False,
         }
 
-    async def get_weather_forcast_crewai(self, city: str) -> AgentResponse:
+    async def get_weather_forecast_crewai(self, city: str) -> AgentResponse:
         """Run the CrewAI weather forecast agent without blocking the API event loop."""
         city = city.strip()
         cached_report = await self._get_cached_report("crewai-forecast", city)

@@ -5,16 +5,16 @@ from app.services.weather_service import (
     WeatherProviderError,
 )
 from app.services.interface.weather_forecast_interface import WeatherForecastInterface
-from app.services.weather_forecast_service import WeatherForcastService
+from app.services.weather_forecast_service import WeatherForecastService
 from app.schema.weather import AgentResponse, WeatherRequest, WeatherResponse
 import logging
 
 router = APIRouter()
-weather_service: WeatherForecastInterface = WeatherForcastService()
+weather_service: WeatherForecastInterface = WeatherForecastService()
 
 logger = logging.getLogger(__name__)
 
-def get_weather_forcast_service() -> WeatherForecastInterface:
+def get_weather_forecast_service() -> WeatherForecastInterface:
     return weather_service
 
 
@@ -25,9 +25,9 @@ def assistant_error_response() -> JSONResponse:
     )
 
 @router.get("/weather/forecast", response_model_exclude_none=True)
-async def get_weather_forcast_route(
+async def get_weather_forecast_route(
     request: WeatherRequest = Depends(),
-    service: WeatherForecastInterface = Depends(get_weather_forcast_service),
+    service: WeatherForecastInterface = Depends(get_weather_forecast_service),
 ) -> AgentResponse:
     """Return the current weather for a city."""
     try:
@@ -41,12 +41,12 @@ async def get_weather_forcast_route(
 @router.get("/weather/forecast/crewai", response_model_exclude_none=True)
 async def get_crewai_weather_route(
     request: WeatherRequest = Depends(),
-    service: WeatherForecastInterface = Depends(get_weather_forcast_service),
+    service: WeatherForecastInterface = Depends(get_weather_forecast_service),
 ) -> AgentResponse:
     """Return a CrewAI-generated weather summary for a city."""
     try:
         logger.info("Fetching CrewAI weather report for city: %s", request.city.strip())
-        return await service.get_weather_forcast_crewai(request.city.strip())
+        return await service.get_weather_forecast_crewai(request.city.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
