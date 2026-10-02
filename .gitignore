@@ -25,3 +25,5 @@ Thumbs.db
 vsqlite*.db
 
 transcode/
+
+data/faiss_index/*

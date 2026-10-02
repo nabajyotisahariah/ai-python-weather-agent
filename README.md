@@ -90,6 +90,19 @@ LANGFUSE_SECRET_KEY=your-langfuse-secret-key
 
 When both keys are configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
 
+## Create Vector DB Index
+
+To enable the AI Agent's FAQ capability, you must build the FAISS vector database index from the provided `weather.txt` FAQ document. This requires your `OPENAI_API_KEY` to be configured in your `.env` file to generate embeddings.
+
+Run the indexing script from the project root:
+
+```powershell
+python script/build_faiss_index.py
+```
+
+This script reads `data/faq/weather.txt`, splits the text, creates embeddings using OpenAI, and saves the resulting FAISS index to the `data/faiss_index` directory. The application will load this index automatically to answer application, subscription, and pricing FAQs.
+
+
 ## Start Redis
 
 The Compose file starts Redis only:
