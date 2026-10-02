@@ -6,7 +6,7 @@ from app.services.weather_service import (
 )
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.services.weather_agent_service import WeatherAgentService
-from app.schema.weather import AgentResponse, WeatherRequest, WeatherResponse
+from app.schema.weather import AgentResponse, WeatherRequest
 import logging
 
 router = APIRouter()
@@ -17,23 +17,6 @@ weather_agent_service: WeatherAgentInterface = WeatherAgentService()
 
 def get_weather_agent_service() -> WeatherAgentInterface:
     return weather_agent_service
-
-@router.get("/weather/agent", summary="Weather Agent", description="Returns the current Weather & forecast of the API.", tags=["System"], response_model_exclude_none=True)
-async def get_weather_forcast_route(
-    request: WeatherRequest = Depends(),
-    service: WeatherAgentInterface = Depends(get_weather_agent_service),
-) -> AgentResponse:
-    """Return the current weather & weather forecast for a city."""
-    try:
-        query_val = request.query if request.query is not None else request.city
-        if query_val is None:
-            raise HTTPException(status_code=422, detail="Either 'city' or 'query' must be provided.")
-        logger.info("Fetching current weather for city: %s", query_val.strip())
-        return await service.get_weather_agent_crewai(query_val.strip())
-    except CityNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 @router.post("/weather/agent", summary="Weather Agent (POST)", description="Returns the current Weather & forecast of the API using a JSON body.", tags=["System"], response_model_exclude_none=True)
 async def post_weather_forecast_route(

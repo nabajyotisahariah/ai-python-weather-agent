@@ -1,14 +1,16 @@
 # orchestrator/crewai/crew.py
 
+import logging
 from crewai import Crew, Process, Agent
 
 from app.orchestrator.crewai.agents import create_weather_orchestrator
 from app.orchestrator.crewai.tasks import create_weather_task
 
+logger = logging.getLogger(__name__)
 
 async def run_weather_orchestrator(query: str) -> Agent:
 
-    print("run_weather_orchestrator ",query)
+    logger.info("Executing run_weather_orchestrator with query: %s", query)
     agent = create_weather_orchestrator()
 
     task = create_weather_task(
