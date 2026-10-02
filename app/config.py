@@ -147,6 +147,12 @@ def validate_settings() -> None:
             logger.error(f"  - {name}")
 
         sys.exit(1)
+        
+    if settings.openai_api_key:
+        os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+    if settings.google_api_key:
+        os.environ["GOOGLE_API_KEY"] = settings.google_api_key
+
 
 
 validate_settings()
