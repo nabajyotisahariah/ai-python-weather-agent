@@ -24,7 +24,7 @@ class WeatherAgentService(WeatherAgentInterface):
 
     async def get_weather_agent_crewai(self, query: str, days: int = 3) -> AgentResponse:
         """Return current weather & forecast data for a city."""
-        #userQuery = f"What is the weather forecast for {city} for {days} days?"
+       
         print("get_weather_agent_crewai ",query)
         response = await run_weather_orchestrator(query)
         

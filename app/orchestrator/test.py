@@ -18,7 +18,8 @@ async def main():
 
     #userQuery =  "What is the weather and 5 day forecast for Delhi?"
     #userQuery =  "What is the weather of Delhi?"
-    userQuery =  "What is the weather forecast for Delhi?"
+    #userQuery =  "What is the weather forecast for Delhi?"
+    userQuery = "what is the weather of delhi & forecast for coming days"
     response = await run_weather_orchestrator(userQuery)
     print("=============Response===================")
     print(response)

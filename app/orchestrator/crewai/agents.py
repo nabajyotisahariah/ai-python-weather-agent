@@ -7,7 +7,6 @@ from .tools import (
     get_weather_forecast,
 )
 
-
 def create_weather_orchestrator():
 
     return Agent(
@@ -27,7 +26,6 @@ def create_weather_orchestrator():
             get_current_weather,
             get_weather_forecast,
         ],
-
         verbose=True,
         allow_delegation=False,
     )
