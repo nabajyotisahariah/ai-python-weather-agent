@@ -3,8 +3,7 @@ import logging
 from crewai import Crew
 from crewai.tools import tool
 
-from app.agents.crewai import build_weather_crew
-from app.agents.crewai.weather_forecast_agent import build_weather_forecast_crew
+from app.agents.crewai import build_weather_crew, build_weather_forecast_crew, build_faq_crew
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +22,13 @@ def run_forecast_agent(city: str, days: int = 7) -> str:
     )
     return result.raw
 
+def run_faq_agent(question: str) -> str:
+    faq_crew: Crew = build_faq_crew(question)
+    result = faq_crew.kickoff(
+        inputs={"question": question},
+    )
+    return result.raw
+
 @tool("get_current_weather")
 def get_current_weather(city: str) -> str:
     """
@@ -38,3 +44,11 @@ def get_weather_forecast(city: str, days: int = 7) -> str:
     """
     print("get_weather_forecast city ",city, " days ",days)
     return run_forecast_agent(city, days)
+
+@tool("answer_faq_question")
+def answer_faq_question(question: str) -> str:
+    """
+    Answer FAQ questions related to weather pricing, subscriptions, and usage.
+    """
+    print("answer_faq_question question ", question)
+    return run_faq_agent(question)

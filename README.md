@@ -12,6 +12,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Current weather by city
 - Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
+- **New:** AI Agent capability resolving application, subscription, and pricing FAQs via an embedded vector database similarity search over `weather.txt`.
 - **Model Context Protocol (MCP)** server capability
 - Redis caching for weather data and generated reports
 - Health-check endpoint
