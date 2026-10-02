@@ -4,13 +4,14 @@ from app.config import settings
 
 
 @tool("get_weather_forecast")
-def get_weather_forecast(city: str, days: int = 3) -> str:
+def get_weather_forecast(city: str, days: int = 7) -> str:
     """
     Get the weather forecast information for a city for a given number of days.
     """
 
     url = f"{settings.weather_api_url}/{city}?format=j1"
 
+    print("tool.get_weather_forecast city ",city," days ",days)
     response = requests.get(url, timeout=settings.weather_timeout_seconds)
     response.raise_for_status()
 

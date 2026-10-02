@@ -15,8 +15,8 @@ def run_weather_agent(city: str):
     print("run_weather_agent ",result)
     return result.raw
 
-def run_forecast_agent(city: str):
-    weather_crew = build_weather_forecast_crew(city)
+def run_forecast_agent(city: str, days: int = 7):
+    weather_crew = build_weather_forecast_crew(city, days)
     result = weather_crew.kickoff(
         inputs={"city": city},
     )
@@ -31,9 +31,9 @@ def get_current_weather(city: str) -> str:
     return run_weather_agent(city)
 
 @tool("get_weather_forecast")
-def get_weather_forecast(city: str, days: int = 5) -> str:
+def get_weather_forecast(city: str, days: int = 7) -> str:
     """
     Get the weather forecast for a city.
     """
-    print("get_weather_forecast city ",city)
+    print("get_weather_forecast city ",city, " days ",days)
     return run_forecast_agent(city, days)

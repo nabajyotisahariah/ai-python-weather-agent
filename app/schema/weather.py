@@ -3,7 +3,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 class WeatherRequest(BaseModel):
-    city: str = Field(..., min_length=1, description="City to get weather for")
+    city: str | None = Field(None, description="City to get weather for")
+    query: str | None = Field(None, description="Query string for weather")
 
 
 class WeatherResponse(BaseModel):
