@@ -30,6 +30,11 @@ async def get_current_weather_route(
     service: WeatherServiceInterface = Depends(get_weather_service),
 ) -> AgentResponse:
     """Return the current weather for a city."""
+    if not request.city or not request.city.strip():
+        return JSONResponse(
+            status_code=401,
+            content={"status": "fail", "message": "City name cannot be empty."}
+        )
     try:
         logger.info("Fetching current weather for city: %s", request.city.strip())
         return await service.get_current_weather(request.city.strip())
@@ -45,6 +50,11 @@ async def get_crewai_weather_route(
     service: WeatherServiceInterface = Depends(get_weather_service),
 ) -> AgentResponse:
     """Return a CrewAI-generated weather summary for a city."""
+    if not request.city or not request.city.strip():
+        return JSONResponse(
+            status_code=401,
+            content={"status": "fail", "message": "City name cannot be empty."}
+        )
     try:
         logger.info("Fetching CrewAI weather report for city: %s", request.city.strip())
         return await service.get_crewai_weather_report(request.city.strip())
@@ -63,6 +73,11 @@ async def get_langgraph_weather_route(
     service: WeatherServiceInterface = Depends(get_weather_service),
 ) -> AgentResponse:
     """Return a LangGraph-generated weather summary for a city."""
+    if not request.city or not request.city.strip():
+        return JSONResponse(
+            status_code=401,
+            content={"status": "fail", "message": "City name cannot be empty."}
+        )
     try:
         logger.info("Fetching LangGraph weather report for city: %s", request.city.strip())
         return await service.get_langgraph_weather_report(request.city.strip())
@@ -81,6 +96,11 @@ async def get_autogen_weather_route(
     service: WeatherServiceInterface = Depends(get_weather_service),
 ) -> AgentResponse:
     """Return an AutoGen-generated weather summary for a city."""
+    if not request.city or not request.city.strip():
+        return JSONResponse(
+            status_code=401,
+            content={"status": "fail", "message": "City name cannot be empty."}
+        )
     try:
         logger.info("Fetching AutoGen weather report for city: %s", request.city.strip())
         return await service.get_autogen_weather_report(request.city.strip())

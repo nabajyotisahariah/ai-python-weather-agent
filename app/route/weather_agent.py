@@ -24,10 +24,13 @@ async def post_weather_forecast_route(
     service: WeatherAgentInterface = Depends(get_weather_agent_service),
 ) -> AgentResponse:
     """Return the current weather & weather forecast for a city using a POST request."""
+    query_val = request.query if request.query is not None else request.city
+    if not query_val or not query_val.strip():
+        return JSONResponse(
+            status_code=401,
+            content={"status": "fail", "message": "City name cannot be empty."}
+        )
     try:
-        query_val = request.query if request.query is not None else request.city
-        if query_val is None:
-            raise HTTPException(status_code=422, detail="Either 'city' or 'query' must be provided.")
         logger.info("Fetching current weather for city (POST): %s", query_val.strip())
         return await service.process_weather_query(query_val.strip())
     except CityNotFoundError as exc:

@@ -30,6 +30,11 @@ async def get_weather_forecast_route(
     service: WeatherForecastInterface = Depends(get_weather_forecast_service),
 ) -> AgentResponse:
     """Return the current weather for a city."""
+    if not request.city or not request.city.strip():
+        return JSONResponse(
+            status_code=401,
+            content={"status": "fail", "message": "City name cannot be empty."}
+        )
     try:
         logger.info("Fetching current weather for city: %s", request.city.strip())
         return await service.get_weather_forecast(request.city.strip())
@@ -44,6 +49,11 @@ async def get_crewai_weather_route(
     service: WeatherForecastInterface = Depends(get_weather_forecast_service),
 ) -> AgentResponse:
     """Return a CrewAI-generated weather summary for a city."""
+    if not request.city or not request.city.strip():
+        return JSONResponse(
+            status_code=401,
+            content={"status": "fail", "message": "City name cannot be empty."}
+        )
     try:
         logger.info("Fetching CrewAI weather report for city: %s", request.city.strip())
         return await service.get_weather_forecast_crewai(request.city.strip())
