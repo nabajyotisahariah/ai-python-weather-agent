@@ -1,12 +1,12 @@
 # orchestrator/crewai/crew.py
 
-from crewai import Crew, Process
+from crewai import Crew, Process, Agent
 
 from app.orchestrator.crewai.agents import create_weather_orchestrator
 from app.orchestrator.crewai.tasks import create_weather_task
 
 
-async def run_weather_orchestrator(query: str):
+async def run_weather_orchestrator(query: str) -> Agent:
 
     print("run_weather_orchestrator ",query)
     agent = create_weather_orchestrator()

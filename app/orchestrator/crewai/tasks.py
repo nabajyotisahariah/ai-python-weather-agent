@@ -3,7 +3,7 @@
 from crewai import Task
 
 
-def create_weather_task(agent, query: str):
+def create_weather_task(agent, query: str) -> Task:
 
     return Task(
         description=f"""

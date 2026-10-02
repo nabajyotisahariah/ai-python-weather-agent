@@ -7,7 +7,7 @@ from .tools import (
     get_weather_forecast,
 )
 
-def create_weather_orchestrator():
+def create_weather_orchestrator() -> Agent:
 
     return Agent(
         role="Weather Intelligence Orchestrator",

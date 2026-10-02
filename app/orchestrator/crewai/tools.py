@@ -7,7 +7,7 @@ from app.agents.crewai.weather_forecast_agent import build_weather_forecast_crew
 
 logger = logging.getLogger(__name__)
 
-def run_weather_agent(city: str):
+def run_weather_agent(city: str) -> str:
     weather_crew = build_weather_crew(city)
     result = weather_crew.kickoff(
         inputs={"city": city},
@@ -15,7 +15,7 @@ def run_weather_agent(city: str):
     print("run_weather_agent ",result)
     return result.raw
 
-def run_forecast_agent(city: str, days: int = 7):
+def run_forecast_agent(city: str, days: int = 7) -> str:
     weather_crew = build_weather_forecast_crew(city, days)
     result = weather_crew.kickoff(
         inputs={"city": city},
