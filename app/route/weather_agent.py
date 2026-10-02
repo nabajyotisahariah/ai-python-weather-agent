@@ -29,7 +29,7 @@ async def post_weather_forecast_route(
         if query_val is None:
             raise HTTPException(status_code=422, detail="Either 'city' or 'query' must be provided.")
         logger.info("Fetching current weather for city (POST): %s", query_val.strip())
-        return await service.get_weather_agent_crewai(query_val.strip())
+        return await service.process_weather_query(query_val.strip())
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:

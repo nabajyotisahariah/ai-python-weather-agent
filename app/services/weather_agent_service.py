@@ -43,11 +43,11 @@ class WeatherAgentService(WeatherAgentInterface):
     async def _cache_report(self, query: str, report: AgentResponse) -> None:
         await self.cache.set(self._report_cache_key(query), report.model_dump(), ex=3600)
 
-    async def get_weather_agent_crewai(self, query: str, days: int = 3) -> AgentResponse:
-        """Return current weather & forecast data for a city."""
+    async def process_weather_query(self, query: str) -> AgentResponse:
+        """Process a natural language weather query using the CrewAI agent."""
        
         query_str = query.strip()
-        logger.info("Executing get_weather_agent_crewai with query: %s", query_str)
+        logger.info("Executing process_weather_query with query: %s", query_str)
         
         # Check cache
         cached_report = await self._get_cached_report(query_str)
