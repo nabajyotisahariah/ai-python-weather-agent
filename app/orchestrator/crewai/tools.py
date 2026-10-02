@@ -27,6 +27,7 @@ def get_current_weather(city: str) -> str:
     """
     Get the current weather conditions for a city.
     """
+    print("get_current_weather city ",city)
     return run_weather_agent(city)
 
 @tool("get_weather_forecast")
@@ -34,4 +35,5 @@ def get_weather_forecast(city: str, days: int = 5) -> str:
     """
     Get the weather forecast for a city.
     """
-    return run_forecast_agent(city)
+    print("get_weather_forecast city ",city)
+    return run_forecast_agent(city, days)

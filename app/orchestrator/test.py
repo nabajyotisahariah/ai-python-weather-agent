@@ -13,13 +13,13 @@ import logging
 setup_logging()
 logging.info("Starting Weather Assistant API %s", settings)
 
-def main():
+async def main():
     setup_logging()
 
     #userQuery =  "What is the weather and 5 day forecast for Delhi?"
     #userQuery =  "What is the weather of Delhi?"
     userQuery =  "What is the weather forecast for Delhi?"
-    response = run_weather_orchestrator(userQuery)
+    response = await run_weather_orchestrator(userQuery)
     print("=============Response===================")
     print(response)
 

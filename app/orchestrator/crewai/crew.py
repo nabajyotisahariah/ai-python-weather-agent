@@ -6,8 +6,9 @@ from app.orchestrator.crewai.agents import create_weather_orchestrator
 from app.orchestrator.crewai.tasks import create_weather_task
 
 
-def run_weather_orchestrator(query: str):
+async def run_weather_orchestrator(query: str):
 
+    print("run_weather_orchestrator ",query)
     agent = create_weather_orchestrator()
 
     task = create_weather_task(
@@ -22,6 +23,6 @@ def run_weather_orchestrator(query: str):
         verbose=True,
     )
 
-    result = crew.kickoff()
+    result = await crew.kickoff_async()
 
     return result.raw

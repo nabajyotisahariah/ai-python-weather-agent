@@ -8,6 +8,7 @@ class WeatherRequest(BaseModel):
 
 class WeatherResponse(BaseModel):
     city: str
+    query: str
     temperature: str | int | float
     feels_like: str | int | float
     humidity: str | int | float

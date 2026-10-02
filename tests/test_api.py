@@ -306,3 +306,21 @@ def test_unexpected_exception_uses_application_handler() -> None:
         "status": "fail",
         "message": "Internal server error",
     }
+
+
+def test_weather_agent_returns_agent_response(client: TestClient) -> None:
+    # Just mock the run_weather_orchestrator for the test
+    with patch("app.services.weather_agent_service.run_weather_orchestrator") as mock_run:
+        # Mock async function return
+        mock_run.return_value = "Mocked CrewAI Response"
+        async def async_mock(*args, **kwargs):
+            return "Mocked CrewAI Response"
+        mock_run.side_effect = async_mock
+        response = client.get("/api/v1/weather/agent", params={"city": "Delhi"})
+        
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "success",
+            "message": "Mocked CrewAI Response",
+            "isCached": False,
+        }
