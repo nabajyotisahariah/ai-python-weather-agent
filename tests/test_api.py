@@ -68,6 +68,9 @@ class StubWeatherForecastService:
             "isCached": False
         }
 
+    async def get_weather_forcast_crewai(self, city: str) -> dict[str, str]:
+        return {"status": "success", "message": f"CrewAI forecast report for {city}"}
+
 class FailingWeatherForecastService(StubWeatherForecastService):
     async def get_weather_forecast(self, city: str, days: int = 3) -> dict[str, object]:
         raise CityNotFoundError("City not found")
@@ -214,7 +217,6 @@ def test_autogen_weather_returns_agent_response(client: TestClient) -> None:
     assert response.json() == {
         "status": "success",
         "message": "AutoGen report for Delhi",
-        "data": None,
         "isCached": False,
     }
 
@@ -225,7 +227,6 @@ def test_crewai_weather_returns_agent_response(client: TestClient) -> None:
     assert response.json() == {
         "status": "success",
         "message": "CrewAI report for Delhi",
-        "data": None,
         "isCached": False,
     }
 
@@ -237,7 +238,6 @@ def test_langgraph_weather_returns_agent_response(client: TestClient) -> None:
     assert response.json() == {
         "status": "success",
         "message": "LangGraph report for Delhi",
-        "data": None,
         "isCached": False,
     }
 
@@ -262,6 +262,17 @@ def test_forecast_weather_maps_city_not_found_to_404() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "City not found"}
+
+
+def test_crewai_forecast_weather_returns_agent_response(client: TestClient) -> None:
+    response = client.get("/api/v1/weather/forecast/crewai", params={"city": "Delhi"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "success",
+        "message": "CrewAI forecast report for Delhi",
+        "isCached": False,
+    }
 
 
 def test_autogen_weather_maps_provider_failure_to_502() -> None:
@@ -295,3 +306,21 @@ def test_unexpected_exception_uses_application_handler() -> None:
         "status": "fail",
         "message": "Internal server error",
     }
+
+
+def test_weather_agent_returns_agent_response(client: TestClient) -> None:
+    # Just mock the run_weather_orchestrator for the test
+    with patch("app.services.weather_agent_service.run_weather_orchestrator") as mock_run:
+        # Mock async function return
+        mock_run.return_value = "Mocked CrewAI Response"
+        async def async_mock(*args, **kwargs):
+            return "Mocked CrewAI Response"
+        mock_run.side_effect = async_mock
+        response = client.get("/api/v1/weather/agent", params={"city": "Delhi"})
+        
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "success",
+            "message": "Mocked CrewAI Response",
+            "isCached": False,
+        }

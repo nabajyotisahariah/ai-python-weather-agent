@@ -15,7 +15,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - **Model Context Protocol (MCP)** server capability
 - Redis caching for weather data and generated reports
 - Health-check endpoint
-- Pydantic request and response validation
+- Pydantic request and response validation (null fields are excluded from JSON responses)
 - CORS support for API clients
 - Security headers for HTTP responses
 - Structured logging and provider error handling
@@ -251,7 +251,18 @@ Example response:
 
 ### AI Weather Summaries
 
-The following endpoints return an object with `status` and `message` fields:
+For intelligent, natural-language weather requests, the recommended approach is using the robust multi-agent POST endpoint. This endpoint uses an orchestrator to seamlessly route your query to either the current weather agent or the forecast agent (or both) based on the user's intent:
+
+```http
+POST /api/v1/weather/agent
+Content-Type: application/json
+
+{
+  "query": "What is the current weather and 3-day forecast for London?"
+}
+```
+
+The legacy GET endpoints are also available and return similar schemas:
 
 ```http
 GET /api/v1/weather/crewai?city=What is the weather of Delhi
@@ -260,10 +271,13 @@ GET /api/v1/weather/autogen?city=tell me weather of Delhi
 GET /api/v1/weather/google-adk?city=weather of Delhi
 ```
 
-PowerShell example:
+PowerShell example (POST):
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=What is the weather of Delhi"
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/weather/agent" `
+                  -Method Post `
+                  -Body '{"query": "What is the weather of Delhi"}' `
+                  -ContentType "application/json"
 ```
 
 Example response:
@@ -276,7 +290,59 @@ Example response:
 }
 ```
 
-Repeated requests for the same provider and city can return `"isCached": true`.
+Repeated requests for the exact same query will hit the Redis cache and return `"isCached": true`.
+
+### Multi-Agent Orchestration Flow
+
+The POST endpoint (`/weather/agent`) introduces an intelligent **CrewAI Orchestrator** that parses complex natural language queries and delegates work to specialized sub-agents. Here is the flow:
+
+```mermaid
+%%{init: {'sequence': {'actorFontWeight': 'bold', 'noteFontWeight': 'bold', 'messageFontWeight': 'bold'}}}%%
+sequenceDiagram
+    actor User
+    participant API as FastAPI Router
+    participant Service as WeatherAgentService
+    participant Cache as Redis
+    participant Orch as Orchestrator Agent (CrewAI)
+    participant CWA as Current Weather Agent
+    participant WFA as Forecast Agent
+    participant Ext as wttr.in API
+
+    User->>API: POST /weather/agent {query}
+    API->>Service: process_weather_query(query)
+    Service->>Cache: Check weather:agent:{query}
+    
+    alt Cache Hit
+        Cache-->>Service: Return cached report
+        Service-->>API: AgentResponse(isCached=True)
+        API-->>User: JSON Response
+    else Cache Miss
+        Cache-->>Service: Null
+        Service->>Orch: run_weather_orchestrator(query)
+        Note over Orch: Analyzes query to determine required capabilities
+        
+        opt Needs Current Weather
+            Orch->>CWA: get_current_weather(city)
+            CWA->>Ext: Fetch current weather data
+            Ext-->>CWA: JSON Data
+            CWA-->>Orch: Current weather summary
+        end
+        
+        opt Needs Forecast
+            Orch->>WFA: get_weather_forecast(city)
+            WFA->>Ext: Fetch forecast data
+            Ext-->>WFA: JSON Data
+            WFA-->>Orch: Weather forecast summary
+        end
+        
+        Note over Orch: Synthesizes sub-agent summaries
+        Orch-->>Service: Final Combined Answer
+        
+        Service->>Cache: Save generated report (1h TTL)
+        Service-->>API: AgentResponse(isCached=False)
+        API-->>User: JSON Response
+    end
+```
 
 ## Error Responses
 

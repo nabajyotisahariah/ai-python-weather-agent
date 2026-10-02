@@ -11,7 +11,7 @@ import logging
 import uvicorn
 from app.utils.logger import setup_logging
 from app.config import settings
-from app.route import health, weather, weather_forecast
+from app.route import health, weather, weather_forecast, weather_agent
 
 setup_logging()
 logging.info("Starting Weather Assistant API %s", settings.environment)
@@ -75,6 +75,7 @@ logging.info("OpenAI Model: %s", settings.openai_api_model)
 # Include Routers
 app.include_router(weather.router, prefix="/api/v1", tags=["Weather"])
 app.include_router(weather_forecast.router, prefix="/api/v1", tags=["Weather Forcast"])
+app.include_router(weather_agent.router, prefix="/api/v1", tags=["Weather Agent"])
 app.include_router(health.router, prefix="/api/v1", tags=["System"])
 
 
