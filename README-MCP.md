@@ -55,7 +55,7 @@ Content-Type: text/event-stream
 X-Accel-Buffering: no
 Transfer-Encoding: chunked
 event: message
-data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"AI Weather MCP Server","version":"1.28.1"},"instructions":"\n    Weather MCP server for retrieving current weather and forecast information.\n\n    Use get_weather for current weather conditions.\n    Use get_weather_forecast for weather forecast information.\n    "}}
+data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"AI Weather MCP Server","version":"1.28.1"},"instructions":"\n    Weather MCP server for retrieving current weather and forecast information, as well as FAQ.\n\n    Use get_weather for current weather conditions.\n    Use get_weather_forecast for forecast information.\n    Use search_faq for querying the Weather FAQ knowledge base.\n    "}}
 `````
 ### 3. List Available Tools
 **Request:**
@@ -82,7 +82,7 @@ Content-Type: text/event-stream
 X-Accel-Buffering: no
 Transfer-Encoding: chunked
 event: message
-data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"get_weather","description":"\n    Get current weather information for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n\n    Returns:\n        Current weather information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"}},"required":["city"],"title":"get_weatherArguments","type":"object"},"outputSchema":{"additionalProperties":true,"title":"get_weatherDictOutput","type":"object"}},{"name":"get_weather_forecast","description":"\n    Get weather forecast for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n        days: Number of forecast days, from 1 to 7.\n\n    Returns:\n        Weather forecast information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"},"days":{"default":3,"title":"Days","type":"integer"}},"required":["city"],"title":"get_weather_forecastArguments","type":"object"},"outputSchema":{"properties":{"result":{"items":{"additionalProperties":true,"type":"object"},"title":"Result","type":"array"}},"required":["result"],"title":"get_weather_forecastOutput","type":"object"}}]}}
+data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"get_weather","description":"\n    Get current weather information for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n\n    Returns:\n        Current weather information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"}},"required":["city"],"title":"get_weatherArguments","type":"object"},"outputSchema":{"additionalProperties":true,"title":"get_weatherDictOutput","type":"object"}},{"name":"get_weather_forecast","description":"\n    Get weather forecast for a city.\n\n    Args:\n        city: City name such as London, Delhi, New York or Tokyo.\n        days: Number of forecast days, from 1 to 7.\n\n    Returns:\n        Weather forecast information.\n    ","inputSchema":{"properties":{"city":{"title":"City","type":"string"},"days":{"default":3,"title":"Days","type":"integer"}},"required":["city"],"title":"get_weather_forecastArguments","type":"object"},"outputSchema":{"properties":{"result":{"items":{"additionalProperties":true,"type":"object"},"title":"Result","type":"array"}},"required":["result"],"title":"get_weather_forecastOutput","type":"object"}},{"name":"search_faq","description":"\n    Searches the Weather FAQ knowledge base using RAG and\n    returns a concise answer based only on retrieved FAQ content.\n\n    Args:\n        query: The user's question about weather services or FAQs.\n\n    Returns:\n        A concise answer based on the FAQ content.\n    ","inputSchema":{"properties":{"query":{"title":"Query","type":"string"}},"required":["query"],"title":"search_faqArguments","type":"object"},"outputSchema":{"type":"string","title":"search_faqOutput"}}]}}
 `````
 ### 4. Call a Tool get_weather
 Finally, execute a specific tool on the MCP server. In this example, we call the `get_weather` tool for the city of Delhi.
@@ -151,7 +151,42 @@ event: message
 data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\n  \"status\": \"success\",\n  \"data\": [\n    {\n      \"date\": \"2026-09-28\",\n      \"max_temp_c\": \"34\",\n      \"min_temp_c\": \"25\",\n      \"avg_temp_c\": \"29\",\n      \"condition\": \"Sunny\",\n      \"humidity\": \"50\",\n      \"wind_speed_kmph\": \"12\",\n      \"chance_of_rain\": \"0\",\n      \"chance_of_snow\": \"0\",\n      \"uv_index\": \"7\"\n    }\n  ],\n  \"isCached\": false\n}"}],"structuredContent":{"status":"success","data":[{"date":"2026-09-28","max_temp_c":"34","min_temp_c":"25","avg_temp_c":"29","condition":"Sunny","humidity":"50","wind_speed_kmph":"12","chance_of_rain":"0","chance_of_snow":"0","uv_index":"7"}],"isCached":false},"isError":false}}
 ```
 
-### 6. Kubernetes Deployment (Helm)
+### 6. Call a Tool search_faq
+Execute the `search_faq` tool to query the knowledge base.
+**Request:**
+```bash
+curl -i http://localhost:8100/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "tools/call",
+    "params": {
+      "name": "search_faq",
+      "arguments": {
+        "query": "What is the API rate limit?"
+      }
+    }
+  }'
+```
+**Response:**
+```http
+HTTP/1.1 200 OK
+Date: Mon, 28 Sep 2026 03:26:11 GMT
+Server: uvicorn
+Cache-Control: no-cache, no-transform
+Connection: keep-alive
+Content-Type: text/event-stream
+X-Accel-Buffering: no
+Transfer-Encoding: chunked
+event: message
+data: {"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"The API rate limit is 1000 requests per minute."}],"isError":false}}
+```
+
+
+### 7. Kubernetes Deployment (Helm)
 You can deploy the MCP server to Kubernetes using the provided Helm chart. The chart is located in the `helm-mcp` directory.
 
 To deploy the MCP server:
@@ -166,7 +201,7 @@ helm upgrade --install weather-mcp .\helm-mcp --namespace default
 
 The deployment runs 3 replicas by default with resource limits for stability.
 
-### 7. Security: IP Whitelisting
+### 8. Security: IP Whitelisting
 The MCP server enforces strict transport security. It only accepts requests from the following allowed hosts and origins:
 - `localhost`
 - `127.0.0.1`

@@ -10,11 +10,13 @@ from app.services.weather_service import WeatherService
 from app.services.weather_forecast_service import WeatherForecastService
 from app.config import settings
 from app.schema.weather import AgentResponse
+from app.utils.redis_cache import AsyncRedisCache
 
 logger = logging.getLogger(__name__)
 
 weather_service = WeatherService()
 weather_forecast_service = WeatherForecastService()
+cache = AsyncRedisCache()
 
 
 async def get_weather(city: str) -> AgentResponse:
@@ -76,6 +78,12 @@ async def search_faq(query: str) -> str:
     """
     logger.info(f">>>> SEARCH FAQ CALLED WITH query={query}")
 
+    cache_key = f"weather:faq:{query.strip().casefold()}"
+    cached_data = await cache.get(cache_key)
+    if cached_data and "answer" in cached_data:
+        logger.info("Returning cached FAQ answer.")
+        return cached_data["answer"]
+
     try:
         # 1. Create embeddings
         embeddings = OpenAIEmbeddings(
@@ -112,7 +120,9 @@ async def search_faq(query: str) -> str:
         ]
 
         if not docs:
-            return "No relevant information found in the FAQ knowledge base."
+            answer = "No relevant information found in the FAQ knowledge base."
+            await cache.set(cache_key, {"answer": answer})
+            return answer
 
         # 4. Build RAG context
         context = "\n\n".join(
@@ -150,8 +160,12 @@ FAQ Context:
 
         # 6. RAG generation
         response = await llm.ainvoke(prompt)
+        answer = response.content.strip()
 
-        return response.content.strip()
+        # Cache the result
+        await cache.set(cache_key, {"answer": answer})
+
+        return answer
 
     except Exception as e:
         logger.error(f"Error searching FAQ: {e}", exc_info=True)
