@@ -12,6 +12,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Current weather by city
 - Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
+- **New:** AI Agent capability resolving application, subscription, and pricing FAQs via an embedded vector database similarity search over `weather.txt`.
 - **Model Context Protocol (MCP)** server capability
 - Redis caching for weather data and generated reports
 - Health-check endpoint
@@ -88,6 +89,19 @@ LANGFUSE_SECRET_KEY=your-langfuse-secret-key
 ```
 
 When both keys are configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
+
+## Create Vector DB Index
+
+To enable the AI Agent's FAQ capability, you must build the FAISS vector database index from the provided `weather.txt` FAQ document. This requires your `OPENAI_API_KEY` to be configured in your `.env` file to generate embeddings.
+
+Run the indexing script from the project root:
+
+```powershell
+python script/build_faiss_index.py
+```
+
+This script reads `data/faq/weather.txt`, splits the text, creates embeddings using OpenAI, and saves the resulting FAISS index to the `data/faiss_index` directory. The application will load this index automatically to answer application, subscription, and pricing FAQs.
+
 
 ## Start Redis
 
@@ -306,7 +320,9 @@ sequenceDiagram
     participant Orch as Orchestrator Agent (CrewAI)
     participant CWA as Current Weather Agent
     participant WFA as Forecast Agent
+    participant FAQ as FAQ Agent
     participant Ext as wttr.in API
+    participant VDB as FAISS Vector DB
 
     User->>API: POST /weather/agent {query}
     API->>Service: process_weather_query(query)
@@ -333,6 +349,13 @@ sequenceDiagram
             WFA->>Ext: Fetch forecast data
             Ext-->>WFA: JSON Data
             WFA-->>Orch: Weather forecast summary
+        end
+
+        opt Needs FAQ
+            Orch->>FAQ: answer_faq_question(question)
+            FAQ->>VDB: search_faq_v2(question)
+            VDB-->>FAQ: Relevant FAQ context
+            FAQ-->>Orch: FAQ answer summary
         end
         
         Note over Orch: Synthesizes sub-agent summaries

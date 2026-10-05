@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     langfuse_secret_key: str | None = None
     langfuse_base_url: str = "https://cloud.langfuse.com"
 
+     # Vector DB Settings
+    vector_store: str = "faiss"
+    pinecone_api_key: str | None = None
+    pinecone_env: str | None = None
+    
+    # Paths
+    data_dir: str = str(BASE_DIR / "data")
+    faq_dir: str = str(BASE_DIR / "data" / "faq")
+    prompts_dir: str = str(BASE_DIR / "data" / "prompts")
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
         env_file_encoding="utf-8",
