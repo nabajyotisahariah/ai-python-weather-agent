@@ -121,6 +121,12 @@ def search_faq_v2(query: str) -> str:
         #docs = vectorstore.similarity_search(query, k=3)
         results = vectorstore.similarity_search_with_score(query, k=3)
 
+        for i, (doc, score) in enumerate(results, start=1):
+            logger.info(
+                f"FAQ Result {i}: score={score:.4f}, "
+                f"content={doc.page_content[:200]}"
+            )
+
         docs = [
             doc
             for doc, score in results

@@ -320,7 +320,9 @@ sequenceDiagram
     participant Orch as Orchestrator Agent (CrewAI)
     participant CWA as Current Weather Agent
     participant WFA as Forecast Agent
+    participant FAQ as FAQ Agent
     participant Ext as wttr.in API
+    participant VDB as FAISS Vector DB
 
     User->>API: POST /weather/agent {query}
     API->>Service: process_weather_query(query)
@@ -347,6 +349,13 @@ sequenceDiagram
             WFA->>Ext: Fetch forecast data
             Ext-->>WFA: JSON Data
             WFA-->>Orch: Weather forecast summary
+        end
+
+        opt Needs FAQ
+            Orch->>FAQ: answer_faq_question(question)
+            FAQ->>VDB: search_faq_v2(question)
+            VDB-->>FAQ: Relevant FAQ context
+            FAQ-->>Orch: FAQ answer summary
         end
         
         Note over Orch: Synthesizes sub-agent summaries

@@ -1,5 +1,5 @@
 from crewai import Agent, Crew, Process, Task
-from app.tools.crewai.faq import search_faq
+from app.tools.crewai.faq import search_faq, search_faq_v2
 
 def build_faq_crew(question: str) -> Crew:
     faq_agent = Agent(
