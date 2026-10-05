@@ -8,6 +8,7 @@ from app.config import settings
 from app.tools.mcp.weather_tools import (
     get_weather,
     get_weather_forecast,
+    search_faq,
 )
 
 setup_logging()
@@ -24,10 +25,11 @@ mcp = FastMCP(
     "AI Weather MCP Server",
     stateless_http=True,
     instructions="""
-    Weather MCP server for retrieving current weather and forecast information.
+    Weather MCP server for retrieving current weather and forecast information, as well as FAQ.
 
     Use get_weather for current weather conditions.
     Use get_weather_forecast for forecast information.
+    Use search_faq for querying the Weather FAQ knowledge base.
     """,
 )
 
@@ -39,6 +41,7 @@ logging.info("MCP Tools initialize")
 
 mcp.tool()(get_weather)
 mcp.tool()(get_weather_forecast)
+mcp.tool()(search_faq)
 
 # ---------------------------------------------------------
 # Transport Security

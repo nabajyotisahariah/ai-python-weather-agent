@@ -161,7 +161,7 @@ When the API runs inside a container, `REDIS_URL` must point to a Redis host rea
 Run the complete test suite from the project root:
 
 ```powershell
-python -m pytest tests/test_api.py -v
+python -m pytest tests/ -v
 ```
 
 
@@ -394,6 +394,7 @@ CORS is also configured to allow cross-origin requests. This can be restricted i
 ```text
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
+├── orchestrator/        # CrewAI multi-agent orchestrator
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Weather service and service interface
@@ -402,6 +403,8 @@ app/
 ├── main.py              # FastAPI application
 ├── weather-mcp.py       # MCP (Model Context Protocol) server configuration
 └── utils/               # Logging and Redis cache helpers
+data/                    # Data directory for vector DB, FAQ documents, and prompts
+script/                  # Helper and test scripts (e.g., FAISS index builder)
 helm-config/             # Kubernetes Helm chart for Application
 helm-mcp/                # Kubernetes Helm chart for MCP
 tests/                   # API and service tests
