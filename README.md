@@ -2,8 +2,8 @@
 
 FastAPI service for current weather data and AI-generated weather summaries. Weather data is retrieved from [wttr.in](https://wttr.in), while summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
-> **🚀 New Feature: Model Context Protocol (MCP)**
-> We now support MCP for seamless tool integration. Please refer to the [MCP Integration Guide (README-MCP.md)](README-MCP.md) for full details on running and querying the MCP server.
+> **🚀 New Feature: Model Context Protocol (FastMCP)**
+> We now support FastMCP for seamless tool integration. Please refer to the [FastMCP Integration Guide (README-MCP.md)](README-MCP.md) for full details on running and querying the FastMCP server.
 
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
@@ -13,7 +13,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
 - **New:** AI Agent capability resolving application, subscription, and pricing FAQs via an embedded vector database similarity search over `weather.txt`.
-- **Model Context Protocol (MCP)** server capability
+- **Model Context Protocol (FastMCP)** server capability
 - Redis caching for weather data and generated reports
 - Health-check endpoint
 - Pydantic request and response validation (null fields are excluded from JSON responses)
@@ -161,7 +161,7 @@ When the API runs inside a container, `REDIS_URL` must point to a Redis host rea
 Run the complete test suite from the project root:
 
 ```powershell
-python -m pytest tests/test_api.py -v
+python -m pytest tests/ -v
 ```
 
 
@@ -394,16 +394,19 @@ CORS is also configured to allow cross-origin requests. This can be restricted i
 ```text
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
+├── orchestrator/        # CrewAI multi-agent orchestrator
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Weather service and service interface
 ├── tools/               # Agent weather tools
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
-├── weather-mcp.py       # MCP (Model Context Protocol) server configuration
+├── weather-mcp.py       # FastMCP server configuration
 └── utils/               # Logging and Redis cache helpers
+data/                    # Data directory for vector DB, FAQ documents, and prompts
+script/                  # Helper and test scripts (e.g., FAISS index builder)
 helm-config/             # Kubernetes Helm chart for Application
-helm-mcp/                # Kubernetes Helm chart for MCP
+helm-mcp/                # Kubernetes Helm chart for FastMCP
 tests/                   # API and service tests
 ```
 
