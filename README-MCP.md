@@ -99,7 +99,7 @@ curl -i http://localhost:8100/mcp \
     "params": {
       "name": "get_weather",
       "arguments": {
-        "city": "Delhi"
+        "city": "What is the weather of delhi?"
       }
     }
   }'
@@ -132,7 +132,7 @@ curl -i http://localhost:8100/mcp \
     "params": {
       "name": "get_weather_forecast",
       "arguments": {
-        "city": "Delhi"
+        "city": "What is weather forecast of Delhi?"
       }
     }
   }'
@@ -166,7 +166,7 @@ curl -i http://localhost:8100/mcp \
     "params": {
       "name": "search_faq",
       "arguments": {
-        "query": "What is the API rate limit?"
+        "query": "What does a weather request cost?"
       }
     }
   }'
