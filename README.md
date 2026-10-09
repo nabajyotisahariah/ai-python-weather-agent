@@ -2,8 +2,8 @@
 
 FastAPI service for current weather data and AI-generated weather summaries. Weather data is retrieved from [wttr.in](https://wttr.in), while summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
-> **🚀 New Feature: Model Context Protocol (MCP)**
-> We now support MCP for seamless tool integration. Please refer to the [MCP Integration Guide (README-MCP.md)](README-MCP.md) for full details on running and querying the MCP server.
+> **🚀 New Feature: Model Context Protocol (FastMCP)**
+> We now support FastMCP for seamless tool integration. Please refer to the [FastMCP Integration Guide (README-MCP.md)](README-MCP.md) for full details on running and querying the FastMCP server.
 
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
@@ -12,11 +12,13 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Current weather by city
 - Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
-- **Model Context Protocol (MCP)** server capability
+- **New:** AI Agent capability resolving application, subscription, and pricing FAQs via an embedded vector database similarity search over `weather.txt`.
+- **Model Context Protocol (FastMCP)** server capability
 - Redis caching for weather data and generated reports
 - Health-check endpoint
-- Pydantic request and response validation
+- Pydantic request and response validation (null fields are excluded from JSON responses)
 - CORS support for API clients
+- Security headers for HTTP responses
 - Structured logging and provider error handling
 - Interactive Swagger UI and ReDoc documentation
 
@@ -39,7 +41,7 @@ python -m venv .venv
  source .venv/Scripts/activate (bash)
 
  $ python --version
-Python 3.10.5
+Python 3.11
 ```
 
 Install the dependencies:
@@ -87,6 +89,19 @@ LANGFUSE_SECRET_KEY=your-langfuse-secret-key
 ```
 
 When both keys are configured, the service records the provider, city, cache status, result, and provider errors. If the keys are omitted or Langfuse is unavailable, the API continues without tracing. Obtain keys from your Langfuse project at [langfuse.com](https://langfuse.com/).
+
+## Create Vector DB Index
+
+To enable the AI Agent's FAQ capability, you must build the FAISS vector database index from the provided `weather.txt` FAQ document. This requires your `OPENAI_API_KEY` to be configured in your `.env` file to generate embeddings.
+
+Run the indexing script from the project root:
+
+```powershell
+python script/build_faiss_index.py
+```
+
+This script reads `data/faq/weather.txt`, splits the text, creates embeddings using OpenAI, and saves the resulting FAISS index to the `data/faiss_index` directory. The application will load this index automatically to answer application, subscription, and pricing FAQs.
+
 
 ## Start Redis
 
@@ -146,20 +161,9 @@ When the API runs inside a container, `REDIS_URL` must point to a Redis host rea
 Run the complete test suite from the project root:
 
 ```powershell
-python -m pytest -q
+python -m pytest tests/ -v
 ```
 
-Run tests with verbose output:
-
-```powershell
-python -m pytest -v
-```
-
-Run one test:
-
-```powershell
-python -m pytest tests/test_api.py::test_autogen_weather_returns_agent_response -q
-```
 
 The project pins AutoGen `0.7.5` and Langfuse `4.15.6` in `requirements.txt`.
 
@@ -197,12 +201,16 @@ Example response for a fresh request:
 
 ```json
 {
-  "city": "Delhi",
-  "temperature": "25",
-  "feels_like": "26",
-  "humidity": "60",
-  "description": "Sunny",
-  "wind_speed": "10"
+  "status": "success",
+  "data": {
+    "city": "Delhi",
+    "temperature": "25",
+    "feels_like": "26",
+    "humidity": "60",
+    "description": "Sunny",
+    "wind_speed": "10"
+  },
+  "isCached": false
 }
 ```
 
@@ -221,39 +229,54 @@ Invoke-RestMethod "http://localhost:8000/api/v1/weather/forecast?city=Delhi"
 Example response:
 
 ```json
-[
-  {
-    "date": "2026-09-26",
-    "max_temp_c": "34",
-    "min_temp_c": "25",
-    "avg_temp_c": "29",
-    "condition": "Sunny",
-    "humidity": "50",
-    "wind_speed_kmph": "12",
-    "chance_of_rain": "0",
-    "chance_of_snow": "0",
-    "uv_index": "7"
-  },
-  {
-    "date": "2026-09-27",
-    "max_temp_c": "33",
-    "min_temp_c": "24",
-    "avg_temp_c": "28",
-    "condition": "Partly cloudy",
-    "humidity": "55",
-    "wind_speed_kmph": "15",
-    "chance_of_rain": "10",
-    "chance_of_snow": "0",
-    "uv_index": "6"
-  }
-]
+{
+  "status": "success",
+  "data": [
+    {
+      "date": "2026-09-26",
+      "max_temp_c": "34",
+      "min_temp_c": "25",
+      "avg_temp_c": "29",
+      "condition": "Sunny",
+      "humidity": "50",
+      "wind_speed_kmph": "12",
+      "chance_of_rain": "0",
+      "chance_of_snow": "0",
+      "uv_index": "7"
+    },
+    {
+      "date": "2026-09-27",
+      "max_temp_c": "33",
+      "min_temp_c": "24",
+      "avg_temp_c": "28",
+      "condition": "Partly cloudy",
+      "humidity": "55",
+      "wind_speed_kmph": "15",
+      "chance_of_rain": "10",
+      "chance_of_snow": "0",
+      "uv_index": "6"
+    }
+  ],
+  "isCached": false
+}
 ```
 
 
 
 ### AI Weather Summaries
 
-The following endpoints return an object with `status` and `message` fields:
+For intelligent, natural-language weather requests, the recommended approach is using the robust multi-agent POST endpoint. This endpoint uses an orchestrator to seamlessly route your query to either the current weather agent or the forecast agent (or both) based on the user's intent:
+
+```http
+POST /api/v1/weather/agent
+Content-Type: application/json
+
+{
+  "query": "What is the current weather and 3-day forecast for London?"
+}
+```
+
+The legacy GET endpoints are also available and return similar schemas:
 
 ```http
 GET /api/v1/weather/crewai?city=What is the weather of Delhi
@@ -262,23 +285,87 @@ GET /api/v1/weather/autogen?city=tell me weather of Delhi
 GET /api/v1/weather/google-adk?city=weather of Delhi
 ```
 
-PowerShell example:
+PowerShell example (POST):
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/weather/autogen?city=What is the weather of Delhi"
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/weather/agent" `
+                  -Method Post `
+                  -Body '{"query": "What is the weather of Delhi"}' `
+                  -ContentType "application/json"
 ```
 
 Example response:
 
 ```json
 {
-  "status": "ok",
+  "status": "success",
   "message": "The current weather in Delhi is ...",
   "isCached": false
 }
 ```
 
-Repeated requests for the same provider and city can return `"isCached": true`.
+Repeated requests for the exact same query will hit the Redis cache and return `"isCached": true`.
+
+### Multi-Agent Orchestration Flow
+
+The POST endpoint (`/weather/agent`) introduces an intelligent **CrewAI Orchestrator** that parses complex natural language queries and delegates work to specialized sub-agents. Here is the flow:
+
+```mermaid
+%%{init: {'sequence': {'actorFontWeight': 'bold', 'noteFontWeight': 'bold', 'messageFontWeight': 'bold'}}}%%
+sequenceDiagram
+    actor User
+    participant API as FastAPI Router
+    participant Service as WeatherAgentService
+    participant Cache as Redis
+    participant Orch as Orchestrator Agent (CrewAI)
+    participant CWA as Current Weather Agent
+    participant WFA as Forecast Agent
+    participant FAQ as FAQ Agent
+    participant Ext as wttr.in API
+    participant VDB as FAISS Vector DB
+
+    User->>API: POST /weather/agent {query}
+    API->>Service: process_weather_query(query)
+    Service->>Cache: Check weather:agent:{query}
+    
+    alt Cache Hit
+        Cache-->>Service: Return cached report
+        Service-->>API: AgentResponse(isCached=True)
+        API-->>User: JSON Response
+    else Cache Miss
+        Cache-->>Service: Null
+        Service->>Orch: run_weather_orchestrator(query)
+        Note over Orch: Analyzes query to determine required capabilities
+        
+        opt Needs Current Weather
+            Orch->>CWA: get_current_weather(city)
+            CWA->>Ext: Fetch current weather data
+            Ext-->>CWA: JSON Data
+            CWA-->>Orch: Current weather summary
+        end
+        
+        opt Needs Forecast
+            Orch->>WFA: get_weather_forecast(city)
+            WFA->>Ext: Fetch forecast data
+            Ext-->>WFA: JSON Data
+            WFA-->>Orch: Weather forecast summary
+        end
+
+        opt Needs FAQ
+            Orch->>FAQ: answer_faq_question(question)
+            FAQ->>VDB: search_faq_v2(question)
+            VDB-->>FAQ: Relevant FAQ context
+            FAQ-->>Orch: FAQ answer summary
+        end
+        
+        Note over Orch: Synthesizes sub-agent summaries
+        Orch-->>Service: Final Combined Answer
+        
+        Service->>Cache: Save generated report (1h TTL)
+        Service-->>API: AgentResponse(isCached=False)
+        API-->>User: JSON Response
+    end
+```
 
 ## Error Responses
 
@@ -288,27 +375,44 @@ Repeated requests for the same provider and city can return `"isCached": true`.
 - `500`: an unexpected application error occurred
 
 Provider failures are logged and returned as safe API responses instead of exposing internal exceptions.
+## Security
+
+The API implements several HTTP security headers to protect against common web vulnerabilities:
+
+- **Strict-Transport-Security (HSTS)**: Enforces secure (HTTPS) connections to the server (`max-age=31536000; includeSubDomains`).
+- **X-Content-Type-Options**: Prevents the browser from interpreting files as a different MIME type to what is specified (`nosniff`).
+- **X-Frame-Options**: Protects against clickjacking by denying the rendering of the API in a frame (`DENY`).
+- **Content-Security-Policy (CSP)**: Helps detect and mitigate certain types of attacks, including Cross-Site Scripting (XSS) and data injection attacks (`default-src 'self'`).
+- **Referrer-Policy**: Controls how much referrer information should be included with requests (`strict-origin-when-cross-origin`).
+
+CORS is also configured to allow cross-origin requests. This can be restricted in production by configuring the `allow_origins` settings in `app/main.py`.
+
+
 
 ## Project Structure
 
 ```text
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
+├── orchestrator/        # CrewAI multi-agent orchestrator
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Weather service and service interface
 ├── tools/               # Agent weather tools
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
-├── weather-mcp.py       # MCP (Model Context Protocol) server configuration
+├── weather-mcp.py       # FastMCP server configuration
 └── utils/               # Logging and Redis cache helpers
-helm-config/             # Kubernetes Helm chart
+data/                    # Data directory for vector DB, FAQ documents, and prompts
+script/                  # Helper and test scripts (e.g., FAISS index builder)
+helm-config/             # Kubernetes Helm chart for Application
+helm-mcp/                # Kubernetes Helm chart for FastMCP
 tests/                   # API and service tests
 ```
 
 ## Kubernetes
 
-The `helm-config` directory contains the Helm chart for deploying the API. The production configuration loads secrets from Google Secret Manager through `GCP_SECRET_NAME` and requires `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `REDIS_URL` as environment variables. Configure those values through your cluster's secret management before deploying.
+The `helm-config` directory contains the Helm chart for deploying the API. It requires `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `REDIS_URL` as environment variables. Configure those values through your cluster's secret management before deploying.
 
 Update the image repository, tag, ingress host, and resource settings in `helm-config/values.yaml` before deploying:
 

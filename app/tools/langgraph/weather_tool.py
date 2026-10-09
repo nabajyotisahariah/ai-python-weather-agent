@@ -1,23 +1,21 @@
-from urllib.parse import quote
-
-import requests
+﻿from urllib.parse import quote
+import httpx
 from langchain_core.tools import tool
-
 from app.config import settings
 
-
 @tool
-def get_weather(city: str) -> str:
+async def get_weather(city: str) -> str:
     """Get current weather information for a city."""
     city = city.strip()
     url = f"{settings.weather_api_url.rstrip('/')}/{quote(city, safe='')}"
 
-    response = requests.get(
-        url,
-        params={"format": "j1"},
-        timeout=settings.weather_timeout_seconds,
-    )
-    response.raise_for_status()
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            url,
+            params={"format": "j1"},
+            timeout=settings.weather_timeout_seconds,
+        )
+        response.raise_for_status()
 
     current = response.json()["current_condition"][0]
     return (
@@ -28,3 +26,4 @@ def get_weather(city: str) -> str:
         f"Weather: {current['weatherDesc'][0]['value']}\n"
         f"Wind Speed: {current['windspeedKmph']} km/h"
     )
+

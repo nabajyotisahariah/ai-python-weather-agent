@@ -7,6 +7,8 @@ httpx
 pydantic-settings
 langgraph
 langchain-openai
+langchain-community
+faiss-cpu
 autogen-agentchat==0.7.5
 autogen-ext[openai]==0.7.5
 google-adk

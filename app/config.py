@@ -48,8 +48,8 @@ environment = os.getenv(
 ).lower()
 logger.info(f"Environment: {environment}")
 
-if environment == "production":
-    load_production_secrets()
+#if environment == "production":
+#    load_production_secrets()
 
 
 class Settings(BaseSettings):
@@ -76,6 +76,16 @@ class Settings(BaseSettings):
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None
     langfuse_base_url: str = "https://cloud.langfuse.com"
+
+     # Vector DB Settings
+    vector_store: str = "faiss"
+    pinecone_api_key: str | None = None
+    pinecone_env: str | None = None
+    
+    # Paths
+    data_dir: str = str(BASE_DIR / "data")
+    faq_dir: str = str(BASE_DIR / "data" / "faq")
+    prompts_dir: str = str(BASE_DIR / "data" / "prompts")
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
@@ -147,6 +157,12 @@ def validate_settings() -> None:
             logger.error(f"  - {name}")
 
         sys.exit(1)
+        
+    if settings.openai_api_key:
+        os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+    if settings.google_api_key:
+        os.environ["GOOGLE_API_KEY"] = settings.google_api_key
+
 
 
 validate_settings()

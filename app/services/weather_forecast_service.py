@@ -7,6 +7,7 @@ import httpx
 from redis.asyncio import Redis
 #from dotenv import load_dotenv
 
+from app.agents.crewai import build_weather_forecast_crew
 from app.services.interface.weather_forecast_interface import WeatherForecastInterface
 from app.config import settings
 from app.schema.weather import AgentResponse
@@ -31,7 +32,7 @@ class WeatherProviderError(WeatherServiceError):
     """The weather provider could not return a valid response."""
 
 
-class WeatherForcastService(WeatherForecastInterface):
+class WeatherForecastService(WeatherForecastInterface):
     base_url: str = settings.weather_api_url
     timeout_seconds: float = settings.weather_timeout_seconds
 
@@ -39,8 +40,8 @@ class WeatherForcastService(WeatherForecastInterface):
         self.cache = AsyncRedisCache(redis_client)
 
     @staticmethod
-    def _cache_key(city: str) -> str:
-        return f"weather:current:{city.casefold()}"
+    def _cache_key(city: str, days: int) -> str:
+        return f"weather:forecast:{city.casefold()}:{days}"
 
     @staticmethod
     def _report_cache_key(provider: str, city: str) -> str:
@@ -64,7 +65,7 @@ class WeatherForcastService(WeatherForecastInterface):
 
     
 
-    async def get_weather_forecast(self, city: str, days: int = 3) -> dict[str, str | int | float]:
+    async def get_weather_forecast(self, city: str, days: int = 3) -> AgentResponse:
         """
         Get weather forecast for a city.
 
@@ -79,54 +80,94 @@ class WeatherForcastService(WeatherForecastInterface):
         if not city:
             raise CityNotFoundError("City name is required")
 
-        with observe_operation("weather:forecast:current", input_data={"city": city}) as observation:
-            cache_key = self._cache_key(city)
-            cached_weather = await self.cache.get(cache_key)
-            if cached_weather:
-                update_observation(observation, output=cached_weather, metadata={"is_cached": True})
-                return cached_weather
-
-            url = f"{self.base_url.rstrip('/')}/{quote(city, safe='')}"
+        cache_key = self._cache_key(city, days)
+        cached_forecast = await self.cache.get(cache_key)
+        
+        if cached_forecast and "data" in cached_forecast:
+            return {
+                "status": "success",
+                "data": cached_forecast["data"],
+                "isCached": True,
+            }
+        
+        url = f"{self.base_url.rstrip('/')}/{quote(city, safe='')}"
+        try:
             async with httpx.AsyncClient(timeout=settings.weather_timeout_seconds) as client:
                 response = await client.get(
                     url,
                     params={"format": "j1"},
                 )
         
+            if response.status_code == 404:
+                raise CityNotFoundError(f"City '{city}' not found.")
             response.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.error("Weather provider error: %s", exc)
+            raise WeatherProviderError(f"Failed to fetch weather data: {exc}") from exc
+    
+        data = response.json()
         
-            data = response.json()
-            print("data ",data)
+        forecasts = []
+        for item in data.get("weather", [])[:days]:
+    
+            hourly = item.get("hourly", [])
+    
+            # Get a representative weather condition.
+            # wttr.in provides multiple hourly entries per day.
+            current_hour = hourly[len(hourly) // 2] if hourly else {}
+    
+            weather_desc = current_hour.get("weatherDesc", [{}])
+    
+            forecasts.append(
+                {
+                    "date": item.get("date"),
+                    "max_temp_c": item.get("maxtempC"),
+                    "min_temp_c": item.get("mintempC"),
+                    "avg_temp_c": item.get("avgtempC"),
+                    "condition": (
+                        weather_desc[0].get("value")
+                        if weather_desc
+                        else None
+                    ),
+                    "humidity": current_hour.get("humidity"),
+                    "wind_speed_kmph": current_hour.get("windspeedKmph"),
+                    "chance_of_rain": current_hour.get("chanceofrain"),
+                    "chance_of_snow": current_hour.get("chanceofsnow"),
+                    "uv_index": item.get("uvIndex"),
+                }
+            )
+
+        # Cache the resulting forecast
+        await self.cache.set(cache_key, {"data": forecasts}, ex=3600)
             
-            forecasts = []
-        
-            for item in data.get("weather", [])[:days]:
-        
-                hourly = item.get("hourly", [])
-        
-                # Get a representative weather condition.
-                # wttr.in provides multiple hourly entries per day.
-                current_hour = hourly[len(hourly) // 2] if hourly else {}
-        
-                weather_desc = current_hour.get("weatherDesc", [{}])
-        
-                forecasts.append(
-                    {
-                        "date": item.get("date"),
-                        "max_temp_c": item.get("maxtempC"),
-                        "min_temp_c": item.get("mintempC"),
-                        "avg_temp_c": item.get("avgtempC"),
-                        "condition": (
-                            weather_desc[0].get("value")
-                            if weather_desc
-                            else None
-                        ),
-                        "humidity": current_hour.get("humidity"),
-                        "wind_speed_kmph": current_hour.get("windspeedKmph"),
-                        "chance_of_rain": current_hour.get("chanceofrain"),
-                        "chance_of_snow": current_hour.get("chanceofsnow"),
-                        "uv_index": item.get("uvIndex"),
-                    }
-                )
-        
-            return forecasts
+        return {
+            "status": 'success',
+            "data": forecasts,
+            "isCached": False,
+        }
+
+    async def get_weather_forecast_crewai(self, city: str) -> AgentResponse:
+        """Run the CrewAI weather forecast agent without blocking the API event loop."""
+        city = city.strip()
+        cached_report = await self._get_cached_report("crewai-forecast", city)
+        if cached_report:
+            return cached_report
+
+        with observe_operation("weather_forecast.agent.crewai", input_data={"city": city}) as observation:
+            try:
+                logger.info("Running CrewAI weather forecast agent for city: %s", city)
+                crew = build_weather_forecast_crew(city)
+                result = await asyncio.to_thread(crew.kickoff, inputs={"city": city})
+                result_str = str(result)
+                if not result_str:
+                    raise ValueError("CrewAI returned an empty response")
+            except Exception as exc:
+                update_observation(observation, output={"error": str(exc)})
+                logger.exception("CrewAI weather forecast agent failed for city: %s", city)
+                raise WeatherProviderError("Weather assistant unavailable") from exc
+
+            logger.info("CrewAI weather forecast report generated for city: %s", city)
+            report = {"status": "success", "message": result_str}
+            update_observation(observation, output=report, metadata={"is_cached": False})
+            await self._cache_report("crewai-forecast", city, report)
+            return report
