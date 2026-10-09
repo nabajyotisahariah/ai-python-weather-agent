@@ -77,8 +77,7 @@ fi
 # Configuration
 # ============================================================
 
-#IMAGE_TAG="$(date +%Y%m%d-%H%M%S)"
-IMAGE_TAG="1"
+IMAGE_TAG="$(date -u +%Y%m%d-%H%M%S)"
 
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
@@ -192,7 +191,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --min="${MIN_INSTANCES}" \
     --max="${MAX_INSTANCES}" \
     --set-env-vars="${ENV_VARS}" \
-    --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
+    --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,REDIS_URL=REDIS_URL:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
     --allow-unauthenticated
 
 

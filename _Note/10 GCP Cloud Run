@@ -165,6 +165,7 @@ Don't deploy your `.env` file.
 Create secrets:
 
 ```bash
+$ echo -n "production" | gcloud secrets create ENVIRONMENT --data-file=-
 $ echo -n "YOUR_OPENAI_KEY" | gcloud secrets create OPENAI_API_KEY --data-file=-
 $ echo -n "YOUR_LANGFUSE_PUBLIC_KEY" | gcloud secrets create LANGFUSE_PUBLIC_KEY --data-file=-
 $ echo -n "YOUR_LANGFUSE_SECRET_KEY" | gcloud secrets create LANGFUSE_SECRET_KEY --data-file=-
@@ -178,11 +179,9 @@ You can verify:
 $ gcloud secrets list
 
 NAME                 CREATED              REPLICATION_POLICY  LOCATIONS
+ENVIRONMENT          2026-10-09T14:06:21  automatic           -
 GOOGLE_API_KEY       2026-10-09T14:06:21  automatic           -
 LANGFUSE_PUBLIC_KEY  2026-10-09T14:00:50  automatic           -
-LANGFUSE_SECRET_KEY  2026-10-09T14:01:15  automatic           -
-OPENAI_API_KEY       2026-10-09T13:56:28  automatic           -
-REDIS_URL            2026-10-09T14:02:28  automatic           -
 ```
 
 # Step 11 — Create Cloud Run Service Account
@@ -303,12 +302,6 @@ Get the URL:
 gcloud run services describe ai-python-weather-agent \
   --region=$REGION \
   --format="value(status.url)"
-```
-
-Then:
-
-```bash
-curl "https://YOUR-CLOUD-RUN-URL/api/v1/weather/crewai?city=Chicago"
 ```
 
 For your forecast endpoint:
