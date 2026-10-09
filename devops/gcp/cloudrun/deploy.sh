@@ -32,11 +32,13 @@ fi
 
 # ============================================================
 # Environment Configuration
+#Artifact Repo Path
+# asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
 # ============================================================
 
 if [[ "$ENVIRONMENT" == "staging" ]]; then
 
-    PROJECT_ID="python-project-1st-sep" #"YOUR-STAGING-PROJECT-ID"
+    PROJECT_ID="project-workspace-511112" #"YOUR-STAGING-PROJECT-ID"
     REGION="asia-south2"
 
     SERVICE_NAME="ai-python-weather-agent-staging"
@@ -53,7 +55,7 @@ if [[ "$ENVIRONMENT" == "staging" ]]; then
 
 elif [[ "$ENVIRONMENT" == "production" ]]; then
 
-    PROJECT_ID="python-project-1st-sep" #"YOUR-PRODUCTION-PROJECT-ID"
+    PROJECT_ID="project-workspace-511112" #"YOUR-PRODUCTION-PROJECT-ID"
     REGION="asia-south2"
 
     SERVICE_NAME="ai-python-weather-agent-production"

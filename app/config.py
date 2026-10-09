@@ -34,7 +34,7 @@ def load_production_secrets() -> None:
     secret_data = get_secret(secret_name)
     secret_values = dotenv_values(stream=StringIO(secret_data))
     #logger.info("Production secrets loaded successfully. Keys: %s",list(secret_values.keys()))
-    print("Production secrets loaded successfully. Keys:", secret_values)
+    logger.info("Production secrets loaded successfully. Keys:", secret_values)
     for name, value in secret_values.items():
         if value is not None:
             os.environ.setdefault(name, value)
