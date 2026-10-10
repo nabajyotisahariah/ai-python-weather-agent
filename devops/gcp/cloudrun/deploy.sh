@@ -41,7 +41,7 @@ if [[ "$ENVIRONMENT" == "staging" ]]; then
     PROJECT_ID="project-workspace-511112" #"YOUR-STAGING-PROJECT-ID"
     REGION="asia-south2"
 
-    SERVICE_NAME="ai-python-weather-agent-staging"
+    SERVICE_NAME="ai-python-weather-svc-stg"
     REPOSITORY="artifact-ai-python-weather-agent"
     IMAGE_NAME="ai-python-weather-agent"
 
@@ -58,7 +58,7 @@ elif [[ "$ENVIRONMENT" == "production" ]]; then
     PROJECT_ID="project-workspace-511112" #"YOUR-PRODUCTION-PROJECT-ID"
     REGION="asia-south2"
 
-    SERVICE_NAME="ai-python-weather-agent-production"
+    SERVICE_NAME="ai-python-weather-svc-prod"
     REPOSITORY="artifact-ai-python-weather-agent"
     IMAGE_NAME="ai-python-weather-agent"
 

@@ -1,7 +1,43 @@
-### Prerequisites
+
+### Step 1 — Prepare Your Python Application
+app/
+├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
+├── orchestrator/        # CrewAI multi-agent orchestrator
+├── route/               # FastAPI route handlers
+├── schema/              # Pydantic request and response models
+├── services/            # Weather service and service interface
+├── tools/               # Agent weather tools
+├── config.py            # Environment-backed settings
+├── main.py              # FastAPI application
+├── weather-mcp.py       # FastMCP server configuration
+└── utils/               # Logging and Redis cache helpers
+data/                    # Data directory for vector DB, FAQ documents, and prompts
+script/                  # Helper and test scripts (e.g., FAISS index builder)
+helm-config/             # Kubernetes Helm chart for Application
+helm-mcp/                # Kubernetes Helm chart for FastMCP
+tests/                   # API and service tests
+
+### Step 2: Prerequisites
 1. Install Docker and Docker Compose.
 
-# Step 1 — Create / Select GCP Project
+### 3 Set variables:
+
+```bash
+#asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
+export PROJECT_ID=$(gcloud config get-value project)
+export REGION=asia-south2
+export APP_ID=app-ai-python-weather
+export SERVICE=service-ai-python-weather
+export REPOSITORY=artifact-ai-python-weather-agent1
+export IMAGE=ai-python-weather-agent
+export TAG=1.0
+
+Note: 
+    $ gcloud config get-value project 
+    project-workspace-511112
+```
+
+### Step 4 — Create / Select GCP Project
 
 1. Created new Project on GCP
     project-workspace
@@ -40,7 +76,8 @@
     project-workspace-511112
 
     ```
-### Step 2 — Enable Required APIs for cloudbuild & secretmanager
+
+### Step 5 — Enable Required APIs for cloudbuild & secretmanager
 
 For your application:
 
@@ -58,18 +95,19 @@ run.googleapis.com                   Cloud Run Admin API
 secretmanager.googleapis.com         Secret Manager API
 ```
 
-# Step 3 — Create Artifact Registry
+
+### Step 6 — Create Artifact Registry
 
 Create a Docker repository:
 
 ```bash
-$ gcloud artifacts repositories create artifact-ai-python-weather-agent \
+$ gcloud artifacts repositories create $REPOSITORY \
   --repository-format=docker \
   --location=asia-south2 \
   --description="AI Weather Agent Docker Repository"
 
-Create request issued for: [artifact-ai-python-weather-agent]
-Created repository 
+  Create request issued for: [artifact-ai-python-weather-agent]
+  Created repository 
 ```
 
 Verify:
@@ -82,7 +120,8 @@ REPOSITORY                        FORMAT  MODE                 DESCRIPTION
 artifact-ai-python-weather-agent  DOCKER  STANDARD_REPOSITORY  AI Weather Agent Docker Repository
 
 ```
-# Step 4 — Authenticate Docker, this allows Docker to push images to Artifact Registry.
+
+### Step 7 — Authenticate Docker, this allows Docker to push images to Artifact Registry.
 
 ```bash
 $ gcloud auth configure-docker asia-south2-docker.pkg.dev
@@ -91,36 +130,9 @@ Adding credentials for: asia-south2-docker.pkg.dev
 Docker configuration file updated.
 ```
 
-# Step 5 — Prepare Your Python Application
-app/
-├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
-├── orchestrator/        # CrewAI multi-agent orchestrator
-├── route/               # FastAPI route handlers
-├── schema/              # Pydantic request and response models
-├── services/            # Weather service and service interface
-├── tools/               # Agent weather tools
-├── config.py            # Environment-backed settings
-├── main.py              # FastAPI application
-├── weather-mcp.py       # FastMCP server configuration
-└── utils/               # Logging and Redis cache helpers
-data/                    # Data directory for vector DB, FAQ documents, and prompts
-script/                  # Helper and test scripts (e.g., FAISS index builder)
-helm-config/             # Kubernetes Helm chart for Application
-helm-mcp/                # Kubernetes Helm chart for FastMCP
-tests/                   # API and service tests
 
+### Step 8 — Build Docker Image
 
-# Step 7 — Build Docker Image
-
-Set variables:
-
-```bash
-#asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
-export PROJECT_ID=$(gcloud config get-value project)
-export REGION=asia-south2
-export REPOSITORY=artifact-ai-python-weather-agent
-export IMAGE=ai-python-weather-agent
-export TAG=1.0
 ```
 
 Build:
@@ -137,7 +149,7 @@ IMAGE                                                            ID
 asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent/ai-python-weather-agent:1.0
 ```
 
-# Step 8 — Test Locally
+### Step 9 — Test Locally
 
 Run:
 
@@ -146,7 +158,7 @@ docker run -p 8000:8000 $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$T
 ```
 
 
-# Step 9 — Push Image to Artifact Registry
+### Step 10 — Push Image to Artifact Registry
 
 ```bash
 docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG
@@ -184,12 +196,12 @@ GOOGLE_API_KEY       2026-10-09T14:06:21  automatic           -
 LANGFUSE_PUBLIC_KEY  2026-10-09T14:00:50  automatic           -
 ```
 
-# Step 11 — Create Cloud Run Service Account
+### Step 11 — Create Cloud Run Service Account
 
 Instead of using broad permissions, create a dedicated service account:
 
 ```bash
-$ gcloud iam service-accounts create service-ai-python-weather --display-name="AI Weather Agent Service"
+$ gcloud iam service-accounts create $SERVICE --display-name="AI Weather Agent Service"
 Created service account [service-ai-python-weather].
 ```
 
@@ -197,7 +209,7 @@ Grant Secret Manager access:
 
 ```bash
 $ gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:service-ai-python-weather@$PROJECT_ID.iam.gserviceaccount.com" \
+  --member="serviceAccount:$SERVICE@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
 Updated IAM policy for project [project-workspace-511112].
@@ -211,28 +223,28 @@ This gives your Cloud Run application permission to read secrets.
 
 ---
 
-# Step 12 — Deploy to Cloud Run
+### Step 12 — Deploy to Cloud Run
 
 Now deploy your Docker image:
 
 ```bash
-gcloud run deploy ai-python-weather-agent \
+gcloud run deploy $APP_ID \
   --image="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG" \
   --region=asia-south2 \
   --platform=managed \
-  --service-account="service-ai-python-weather@$PROJECT_ID.iam.gserviceaccount.com" \
+  --service-account="$SERVICE$@$PROJECT_ID.iam.gserviceaccount.com" \
   --port=8000 \
   --memory=1Gi \
   --cpu=1 \
   --set-env-vars=ENVIRONMENT=production
 ```
 
-# Step 13 — Configure Secrets in Cloud Run
+### Step 13 — Configure Secrets in Cloud Run
 
 You can bind Secret Manager secrets directly to environment variables:
 
 ```bash
-$ gcloud run services update ai-python-weather-agent \
+$ gcloud run services update $APP_ID \
   --region=$REGION \
   --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest"
 
@@ -243,12 +255,12 @@ Done.
 Service URL: https://ai-python-weather-agent-426899950764.asia-south2.run.app
 ```
 
-# Step 14 — Configure Environment Variables
+### Step 14 — Configure Environment Variables
 
 For non-sensitive configuration:
 
 ```bash
-gcloud run services update ai-python-weather-agent \
+gcloud run services update $APP_ID \
   --region=$REGION \
   --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO"
 ```
@@ -266,23 +278,23 @@ Keep credentials in **Secret Manager**, not environment variables stored directl
 
 ---
 
-# Step 15 — Configure Scaling
+### Step 15 — Configure Scaling
 
 For your weather API:
 
 ```bash
-gcloud run services update ai-python-weather-agent \
+gcloud run services update $APP_ID \
   --region=$REGION \
   --min=0 \
   --max=10
 ```
 
-# Step 16 — Make the Service Public
+### Step 16 — Make the Service Public
 
 If this is a public demo API:
 
 ```bash
-gcloud run services add-iam-policy-binding ai-python-weather-agent \
+gcloud run services add-iam-policy-binding $APP_ID \
   --region=$REGION \
   --member="allUsers" \
   --role="roles/run.invoker"
@@ -294,12 +306,12 @@ For production, however, don't automatically make the service public. Prefer aut
 
 ---
 
-# Step 17 — Test Your Cloud Run API
+### Step 17 — Test Your Cloud Run API
 
 Get the URL:
 
 ```bash
-gcloud run services describe ai-python-weather-agent \
+gcloud run services describe $APP_ID \
   --region=$REGION \
   --format="value(status.url)"
 ```
@@ -310,12 +322,12 @@ For your forecast endpoint:
 curl "https://YOUR-CLOUD-RUN-URL/api/v1/weather/forecast/crewai?city=Chicago"
 ```
 
-# Step 18 — Check Logs
+### Step 18 — Check Logs
 
 Cloud Run logs:
 
 ```bash
-gcloud run services logs read ai-python-weather-agent --region=$REGION
+gcloud run services logs read $APP_ID --region=$REGION
 
 2026-10-09  - app.utils.logger - INFO - Logging configured successfully.
 2026-10-09  - root - INFO - Starting Weather Assistant API production
@@ -325,7 +337,7 @@ gcloud run services logs read ai-python-weather-agent --region=$REGION
 
 ```
 
-# Step 19 — Create a New Version
+### Step 19 — Create a New Version
 
 When you change the application:
 
@@ -350,7 +362,7 @@ docker push \
 Deploy:
 
 ```bash
-gcloud run deploy ai-python-weather-agent \
+gcloud run deploy $APP_ID \
   --image=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG \
   --region=$REGION
 ```
