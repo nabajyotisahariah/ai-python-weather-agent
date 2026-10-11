@@ -67,11 +67,11 @@ tests/                   # API and service tests
 #asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
 export PROJECT_ID=$(gcloud config get-value project)
 export REGION=asia-south2
-export SERVICE=app2-ai-python-weather
-export SERVICE_ACCOUNT=service2-ai-python-weather
-export REPOSITORY=artifact2-ai-python-weather-agent
-export IMAGE=ai2-python-weather-agent
-export TAG=1.0
+export SERVICE=app4-ai-python-weather
+export SERVICE_ACCOUNT=service4-ai-python-weather
+export REPOSITORY=artifact4-ai-python-weather-agent
+export IMAGE=ai4-python-weather-agent
+export TAG=1.1
 
 Note: 
     $ gcloud config get-value project 
@@ -142,6 +142,7 @@ Build:
 
 ```bash
 docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG .
+docker build --no-cache -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG .
 ```
 
 Check:
@@ -214,7 +215,7 @@ Created service account [service-ai-python-weather].
 ```
 
 ### Step 13 - Grant Secret Manager access: [https://console.cloud.google.com/iam-admin/iam]
-  For better security, grant access only to the specific secret the application needs. For example, to allow access to the openai-api-key secre. It will create an entry IAM services for the SERVICE_ACCOUNT service.
+  For better security, grant access only to the specific secret the application needs. For example, to allow access to the openai-api-key secre. It will create an entry IAM services for the SERVICE_ACCOUNT service. It will create a new record in IM Service wth the $SERVICE_ACCOUNT
 
 ```bash
 $ gcloud projects add-iam-policy-binding $PROJECT_ID \
@@ -241,7 +242,11 @@ gcloud run deploy "$SERVICE" \
   --port=8000 \
   --memory=1Gi \
   --cpu=1 \
-  --set-env-vars="ENVIRONMENT=production"
+  --min=0 \
+  --max-instances=1 \
+  --set-env-vars="ENVIRONMENT=production" \
+  --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,REDIS_URL=REDIS_URL:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
+  --allow-unauthenticated
 ```
 
   On Error
@@ -347,10 +352,11 @@ curl "https://YOUR-CLOUD-RUN-URL/api/v1/weather/forecast/crewai?city=Chicago"
 
 ### Step 20 — Check Logs
 
-Cloud Run logs:
+1. Cloud Run logs:
 
 ```bash
 gcloud run services logs read $SERVICE --region=$REGION
+gcloud run services logs read "$SERVICE" --region="$REGION" --limit=100
 
 2026-10-09  - app.utils.logger - INFO - Logging configured successfully.
 2026-10-09  - root - INFO - Starting Weather Assistant API production
@@ -359,6 +365,10 @@ gcloud run services logs read $SERVICE --region=$REGION
 2026-10-09  - root - INFO - OpenAI Model: gpt-4o-mini
 
 ```
+
+2. Stream live logs continuously
+gcloud beta run services logs tail "$SERVICE" \
+  --region="$REGION"
 
 ### Step 21 — Create a New Version
 
@@ -389,3 +399,19 @@ gcloud run deploy $SERVICE \
   --image=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG \
   --region=$REGION
 ```
+### Run the Deployment Script
+
+Step 1 — Check the prerequisites
+  Run these commands in the same terminal:
+  gcloud --version
+  docker --version
+  docker info
+  gcloud auth list
+  gcloud config get-value project
+
+Step 2 — Fix the permissions
+  Run:
+    chmod +x deploy.sh
+
+Step 3 : Run the pipelie
+  ./deploy.sh production

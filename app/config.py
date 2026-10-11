@@ -95,7 +95,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-logger.info("Loaded settings for environment: %s", settings.environment)
+logger.info("Loaded settings for environment: %s", settings)
 
 
 def validate_settings() -> None:
