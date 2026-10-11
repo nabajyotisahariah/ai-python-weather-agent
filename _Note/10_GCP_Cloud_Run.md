@@ -189,8 +189,6 @@ $ echo -n "YOUR_OPENAI_KEY" | gcloud secrets create OPENAI_API_KEY --data-file=-
 $ echo -n "YOUR_GOOGLE_API_KEY" | gcloud secrets create GOOGLE_API_KEY --data-file=-
 $ echo -n "YOUR_LANGFUSE_PUBLIC_KEY" | gcloud secrets create LANGFUSE_PUBLIC_KEY --data-file=-
 $ echo -n "YOUR_LANGFUSE_SECRET_KEY" | gcloud secrets create LANGFUSE_SECRET_KEY --data-file=-
-$ echo -n "REDIS_URL" | gcloud secrets create REDIS_URL   --data-file=-
-Created version [1] of the secret [REDIS_URL].
 ```
 
 You can verify:
@@ -290,7 +288,7 @@ For non-sensitive configuration:
 ```bash
 gcloud run services update $SERVICE \
   --region=$REGION \
-  --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO"
+  --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO,REDIS_ENABLED=false"
 ```
 
 For example:
@@ -299,8 +297,10 @@ For example:
 ENVIRONMENT=production
 LOG_LEVEL=INFO
 MODEL=gpt-4o-mini
-CACHE_TTL=3600
+REDIS_ENABLED=false
 ```
+
+Redis caching is disabled in production, so the service does not need a `REDIS_URL` secret. Local development and staging keep Redis enabled.
 
 Keep credentials in **Secret Manager**, not environment variables stored directly in deployment scripts.
 

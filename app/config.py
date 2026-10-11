@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     weather_timeout_seconds: float = 10.0
 
     # Redis
+    redis_enabled: bool = False
     redis_url: str = "redis://localhost:6379/0"
     redis_cache_ttl_seconds: int = 3600
 
@@ -132,8 +133,9 @@ def validate_settings() -> None:
         required = {
             "OPENAI_API_KEY": settings.openai_api_key,
             "GOOGLE_API_KEY": settings.google_api_key,
-            "REDIS_URL": settings.redis_url,
         }
+        if settings.redis_enabled:
+            required["REDIS_URL"] = settings.redis_url
 
     else:
         logger.error(

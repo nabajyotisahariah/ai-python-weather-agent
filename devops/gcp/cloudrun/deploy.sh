@@ -53,7 +53,7 @@ if [[ "$ENVIRONMENT" == "staging" ]]; then
     MEMORY="1Gi"
     CPU="1"
 
-    ENV_VARS="ENVIRONMENT=staging,LOG_LEVEL=DEBUG"
+    ENV_VARS="ENVIRONMENT=staging,LOG_LEVEL=DEBUG,REDIS_ENABLED=true"
 
 elif [[ "$ENVIRONMENT" == "production" ]]; then
 
@@ -72,7 +72,7 @@ elif [[ "$ENVIRONMENT" == "production" ]]; then
     MEMORY="1Gi"
     CPU="1"
 
-    ENV_VARS="ENVIRONMENT=production,LOG_LEVEL=INFO"
+    ENV_VARS="ENVIRONMENT=production,LOG_LEVEL=INFO,REDIS_ENABLED=false"
 
 fi
 
@@ -192,7 +192,7 @@ gcloud run deploy "${SERVICE}" \
     --min="${MIN_INSTANCES}" \
     --max-instances="${MAX_INSTANCES}" \
     --set-env-vars="${ENV_VARS}" \
-    --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,REDIS_URL=REDIS_URL:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
+    --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
     --allow-unauthenticated
 
 
