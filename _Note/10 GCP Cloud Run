@@ -67,14 +67,17 @@ tests/                   # API and service tests
 #asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
 export PROJECT_ID=$(gcloud config get-value project)
 export REGION=asia-south2
-export SERVICE=app1-ai-python-weather
-export SERVICE_ACCOUNT=service1-ai-python-weather
-export REPOSITORY=artifact1-ai-python-weather-agent
-export IMAGE=ai1-python-weather-agent
+export SERVICE=app2-ai-python-weather
+export SERVICE_ACCOUNT=service2-ai-python-weather
+export REPOSITORY=artifact2-ai-python-weather-agent
+export IMAGE=ai2-python-weather-agent
 export TAG=1.0
 
 Note: 
     $ gcloud config get-value project 
+    project-workspace-511112
+
+    $ echo "$PROJECT_ID"
     project-workspace-511112
 ```
 
@@ -126,8 +129,8 @@ artifact-ai-python-weather-agent  DOCKER  STANDARD_REPOSITORY  AI Weather Agent 
 
 ```bash
 $ gcloud auth configure-docker asia-south2-docker.pkg.dev
-Adding credentials for: asia-south2-docker.pkg.dev
 
+Adding credentials for: asia-south2-docker.pkg.dev
 Docker configuration file updated.
 ```
 
@@ -145,6 +148,7 @@ Check:
 
 ```bash
 $ docker images
+
 IMAGE                                                            ID             
 asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent/ai-python-weather-agent:1.0
 ```
@@ -170,13 +174,13 @@ Verify:
 
 ```bash
 gcloud artifacts docker images list $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY
+```
 
-
-### Step 10 — Create Secret Manager Secrets [https://console.cloud.google.com/security/secret-manager/secrets, https://console.cloud.google.com/iam-admin/iam]
+### Step 10 — Create Secret Manager Secrets [https://console.cloud.google.com/security/secret-manager/secrets]
 
 Don't deploy your `.env` file.
 
-### Step 11 - Create secrets:
+- Create secrets:
 
 ```bash
 $ echo -n "production" | gcloud secrets create ENVIRONMENT --data-file=-
@@ -205,16 +209,18 @@ Instead of using broad permissions, create a dedicated service account:
 
 ```bash
 $ gcloud iam service-accounts create $SERVICE_ACCOUNT --display-name="AI Weather Agent Service"
+
 Created service account [service-ai-python-weather].
 ```
 
 ### Step 13 - Grant Secret Manager access: [https://console.cloud.google.com/iam-admin/iam]
-  For better security, grant access only to the specific secret the application needs. For example, to allow access to the openai-api-key secret
+  For better security, grant access only to the specific secret the application needs. For example, to allow access to the openai-api-key secre. It will create an entry IAM services for the SERVICE_ACCOUNT service.
 
 ```bash
 $ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
+
   -----
   Updated IAM policy for project [project-workspace-511112].
   bindings:

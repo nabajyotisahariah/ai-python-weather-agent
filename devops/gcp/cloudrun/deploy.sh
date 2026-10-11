@@ -38,12 +38,14 @@ fi
 
 if [[ "$ENVIRONMENT" == "staging" ]]; then
 
-    PROJECT_ID="project-workspace-511112" #"YOUR-STAGING-PROJECT-ID"
-    REGION="asia-south2"
+    PROJECT_ID=project-workspace-stg
+    REGION=asia-south2
 
-    SERVICE_NAME="ai-python-weather-svc-stg"
-    REPOSITORY="artifact-ai-python-weather-agent"
-    IMAGE_NAME="ai-python-weather-agent"
+    SERVICE=app2-ai-python-weather
+    SERVICE_ACCOUNT=service2-ai-python-weather
+    REPOSITORY=artifact2-ai-python-weather-agent
+    IMAGE=ai2-python-weather-agent
+    TAG=1.0
 
     MIN_INSTANCES=0
     MAX_INSTANCES=1
@@ -55,12 +57,14 @@ if [[ "$ENVIRONMENT" == "staging" ]]; then
 
 elif [[ "$ENVIRONMENT" == "production" ]]; then
 
-    PROJECT_ID="project-workspace-511112" #"YOUR-PRODUCTION-PROJECT-ID"
-    REGION="asia-south2"
-
-    SERVICE_NAME="ai-python-weather-svc-prod"
-    REPOSITORY="artifact-ai-python-weather-agent"
-    IMAGE_NAME="ai-python-weather-agent"
+    PROJECT_ID=project-workspace-511112
+    REGION=asia-south2
+    
+    SERVICE=app2-ai-python-weather
+    SERVICE_ACCOUNT=service2-ai-python-weather
+    REPOSITORY=artifact2-ai-python-weather-agent
+    IMAGE=ai2-python-weather-agent
+    TAG=1.0
 
     MIN_INSTANCES=0
     MAX_INSTANCES=1
@@ -77,11 +81,7 @@ fi
 # Configuration
 # ============================================================
 
-IMAGE_TAG="$(date -u +%Y%m%d-%H%M%S)"
-
-IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:${IMAGE_TAG}"
-
-SERVICE_ACCOUNT="service-ai-python-weather-agent@${PROJECT_ID}.iam.gserviceaccount.com"
+IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${TAG}"
 
 
 echo ""
@@ -91,7 +91,7 @@ echo "============================================================"
 echo " Environment      : ${ENVIRONMENT}"
 echo " Project          : ${PROJECT_ID}"
 echo " Region           : ${REGION}"
-echo " Service          : ${SERVICE_NAME}"
+echo " Service Account  : ${SERVICE_ACCOUNT}"
 echo " Image            : ${IMAGE_URI}"
 echo " Min Instances    : ${MIN_INSTANCES}"
 echo " Max Instances    : ${MAX_INSTANCES}"
@@ -118,7 +118,8 @@ gcloud services enable \
     run.googleapis.com \
     artifactregistry.googleapis.com \
     cloudbuild.googleapis.com \
-    secretmanager.googleapis.com
+    secretmanager.googleapis.com \
+    --project="${PROJECT_ID}"
 
 
 # ============================================================
@@ -180,16 +181,16 @@ docker push "${IMAGE_URI}"
 
 echo ">>> Deploying Cloud Run service..."
 
-gcloud run deploy "${SERVICE_NAME}" \
+gcloud run deploy "${SERVICE}" \
+    --project="${PROJECT_ID}" \
     --image="${IMAGE_URI}" \
     --region="${REGION}" \
-    --platform=managed \
-    --service-account="${SERVICE_ACCOUNT}" \
+    --service-account="${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com" \
     --port=8000 \
     --memory="${MEMORY}" \
     --cpu="${CPU}" \
     --min="${MIN_INSTANCES}" \
-    --max="${MAX_INSTANCES}" \
+    --max-instances="${MAX_INSTANCES}" \
     --set-env-vars="${ENV_VARS}" \
     --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,REDIS_URL=REDIS_URL:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
     --allow-unauthenticated
@@ -199,7 +200,7 @@ gcloud run deploy "${SERVICE_NAME}" \
 # Step 8 - Get Service URL
 # ============================================================
 
-SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
+SERVICE_URL=$(gcloud run services describe "${SERVICE}" \
     --region="${REGION}" \
     --format="value(status.url)")
 
@@ -213,7 +214,7 @@ echo "============================================================"
 echo " Deployment Successful"
 echo "============================================================"
 echo " Environment : ${ENVIRONMENT}"
-echo " Service     : ${SERVICE_NAME}"
+echo " Service     : ${SERVICE}"
 echo " Image       : ${IMAGE_URI}"
 echo " URL         : ${SERVICE_URL}"
 echo "============================================================"
