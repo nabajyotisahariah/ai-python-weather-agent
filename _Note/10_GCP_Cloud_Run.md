@@ -184,7 +184,6 @@ Don't deploy your `.env` file.
 - Create secrets:
 
 ```bash
-$ echo -n "production" | gcloud secrets create ENVIRONMENT --data-file=-
 $ echo -n "YOUR_OPENAI_KEY" | gcloud secrets create OPENAI_API_KEY --data-file=-
 $ echo -n "YOUR_GOOGLE_API_KEY" | gcloud secrets create GOOGLE_API_KEY --data-file=-
 $ echo -n "YOUR_LANGFUSE_PUBLIC_KEY" | gcloud secrets create LANGFUSE_PUBLIC_KEY --data-file=-
@@ -197,9 +196,10 @@ You can verify:
 $ gcloud secrets list
 
 NAME                 CREATED              REPLICATION_POLICY  LOCATIONS
-ENVIRONMENT          2026-10-09T14:06:21  automatic           -
-GOOGLE_API_KEY       2026-10-09T14:06:21  automatic           -
-LANGFUSE_PUBLIC_KEY  2026-10-09T14:00:50  automatic           -
+YOUR_OPENAI_KEY          2026-10-09T14:06:21  automatic           -
+GOOGLE_API_KEY           2026-10-09T14:06:21  automatic           -
+LANGFUSE_PUBLIC_KEY      2026-10-09T14:00:50  automatic           -
+YOUR_LANGFUSE_SECRET_KEY      2026-10-09T14:00:50  automatic           -
 ```
 
 ### Step 12 — Create the service account [https://console.cloud.google.com/iam-admin/serviceaccounts]
@@ -243,29 +243,11 @@ gcloud run deploy "$SERVICE" \
   --min=0 \
   --max-instances=1 \
   --set-env-vars="ENVIRONMENT=production" \
-  --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,REDIS_URL=REDIS_URL:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
+  --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest" \
   --allow-unauthenticated
 ```
 
-  On Error
-  Permission 'iam.serviceaccounts.actAs' denied on service account $SERVICE_ACCOUNT
-
-  $ gcloud iam service-accounts add-iam-policy-binding \
-    "${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com" \
-    --project="$PROJECT_ID" \
-    --member="user:nabajyotisahariah009@gmail.com" \
-    --role="roles/iam.serviceAccountUser"
-
-  Updated IAM policy for serviceAccount [service1-ai-python-weather@project-workspace-511112.iam.gserviceaccount.com].
-  bindings:
-  - members:
-    - user:nabajyotisahariah009@gmail.com
-    role: roles/iam.serviceAccountUser
-  etag: BwZdhtWnsZk=
-  version: 1
-
-
-### Step 15 — Configure Secrets in Cloud Run [https://console.cloud.google.com/run/overview]
+### Step 15 — Alternatively Secrets can be mapped to services in Cloud Run [https://console.cloud.google.com/run/overview]
 
 You can bind Secret Manager secrets directly to environment variables:
 
@@ -415,3 +397,54 @@ Step 2 — Fix the permissions
 
 Step 3 : Run the pipelie
   ./deploy.sh production
+
+### API Response after deployment
+1 Health Check
+https://app-ai-python-weather-513793705540.asia-south2.run.app/api/v1/health
+{"status":"ok"}
+
+
+2 CrewAI Single Agent
+
+https://app-ai-python-weather-513793705540.asia-south2.run.app/api/v1/weather/crewai?city=What is the temp in Delhi
+{
+  "status":"success",
+  "message":"The current weather in Delhi is as follows:\n- Temperature: 33°C\n- Feels-like temperature: 32°C\n- Humidity: 37%\n- Weather condition: Dust storm\n- Wind speed: 14 km/h","isCached":false
+}
+
+https://app-ai-python-weather-513793705540.asia-south2.run.app/api/v1/weather/forecast/crewai?city=What is the temp in Delhi
+{
+  "status": "success",
+  "message": "Here is the weather forecast for Delhi for the upcoming days:\n\n- Date: 2026-10-11, Max Temp: 35°C, Min Temp: 24°C, Condition: Dust storm\n- Date: 2026-10-12, Max Temp: 34°C, Min Temp: 25°C, Condition: Sunny\n- Date: 2026-10-13, Max Temp: 36°C, Min Temp: 27°C, Condition: Sunny\n\nLet me know if you need further details!",
+  "isCached": false
+}
+
+3 Multi Agent
+curl --location 'https://app-ai-python-weather-513793705540.asia-south2.run.app/api/v1/weather/agent' \
+--header 'Content-Type: application/json' \
+--data '{"query": "What is the weather of Delhi"}'
+{
+    "status": "success",
+    "message": "The current weather in Delhi is as follows:\n- Temperature: 33°C\n- Feels-like temperature: 32°C\n- Humidity: 37%\n- Weather condition: Dust storm\n- Wind speed: 14 km/h",
+    "isCached": false
+}
+
+curl --location 'https://app-ai-python-weather-513793705540.asia-south2.run.app/api/v1/weather/agent' \
+--header 'Content-Type: application/json' \
+--data '{"query": "What is the weather forecast of Delhi"}'
+{
+    "status": "success",
+    "message": "The weather forecast for Delhi for the next three days is as follows:\n- October 11, 2026: Max temperature 34°C, Min temperature 25°C, Weather condition: Dust storm\n- October 12, 2026: Max temperature 34°C, Min temperature 25°C, Weather condition: Sunny\n- October 13, 2026: Max temperature 36°C, Min temperature 27°C, Weather condition: Sunny",
+    "isCached": false
+}
+
+
+curl --location 'https://app-ai-python-weather-513793705540.asia-south2.run.app/api/v1/weather/agent' \
+--header 'Content-Type: application/json' \
+--data '{"query": "What is the current weather in Delhi, and what is the forecast for the upcoming days?"}'
+
+{
+    "status": "success",
+    "message": "The current weather in Delhi is as follows:\n- Temperature: 33°C\n- Feels-like temperature: 32°C\n- Humidity: 37%\n- Weather condition: Dust storm\n- Wind speed: 14 km/h\n\nHere is the weather forecast for Delhi for the upcoming days:\n- October 11, 2026: Max temperature will be 34°C, Min temperature will be 25°C, with a Dust storm.\n- October 12, 2026: Max temperature will be 34°C, Min temperature will be 25°C, and it will be Sunny.\n- October 13, 2026: Max temperature will be 36°C, Min temperature will be 27°C, and it will be Sunny.\n\nIf you would like more days or additional details, feel free to ask!",
+    "isCached": false
+}
