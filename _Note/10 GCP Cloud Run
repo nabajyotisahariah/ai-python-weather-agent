@@ -20,24 +20,8 @@ tests/                   # API and service tests
 ### Step 2: Prerequisites
 1. Install Docker and Docker Compose.
 
-### 3 Set variables:
 
-```bash
-#asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
-export PROJECT_ID=$(gcloud config get-value project)
-export REGION=asia-south2
-export APP_ID=app-ai-python-weather
-export SERVICE=service-ai-python-weather
-export REPOSITORY=artifact-ai-python-weather-agent1
-export IMAGE=ai-python-weather-agent
-export TAG=1.0
-
-Note: 
-    $ gcloud config get-value project 
-    project-workspace-511112
-```
-
-### Step 4 — Create / Select GCP Project
+### Step 3 — Create / Select GCP Project
 
 1. Created new Project on GCP
     project-workspace
@@ -77,7 +61,24 @@ Note:
 
     ```
 
-### Step 5 — Enable Required APIs for cloudbuild & secretmanager
+### 4 Set variables:
+
+```bash
+#asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
+export PROJECT_ID=$(gcloud config get-value project)
+export REGION=asia-south2
+export SERVICE=app1-ai-python-weather
+export SERVICE_ACCOUNT=service1-ai-python-weather
+export REPOSITORY=artifact1-ai-python-weather-agent
+export IMAGE=ai1-python-weather-agent
+export TAG=1.0
+
+Note: 
+    $ gcloud config get-value project 
+    project-workspace-511112
+```
+
+### Step 5 — Enable Required APIs for cloudbuild & secretmanager in the Project
 
 For your application:
 
@@ -96,7 +97,7 @@ secretmanager.googleapis.com         Secret Manager API
 ```
 
 
-### Step 6 — Create Artifact Registry
+### Step 6 — Create Artifact Registry to store the docker images [https://console.cloud.google.com/artifacts]
 
 Create a Docker repository:
 
@@ -131,7 +132,7 @@ Docker configuration file updated.
 ```
 
 
-### Step 8 — Build Docker Image
+### Step 8 — Build Docker Image locally or VM
 
 ```
 
@@ -154,11 +155,13 @@ asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-a
 Run:
 
 ```bash
-docker run -p 8000:8000 $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG
+$ docker run -p 8000:8000 $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG
+
+ERROR: .env file is not present: /app/.env  #Error for security reason, as .env is not saved in the git repo
 ```
 
 
-### Step 10 — Push Image to Artifact Registry
+### Step 10 — Push Image to Artifact Registry  [https://console.cloud.google.com/artifacts]
 
 ```bash
 docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG
@@ -170,7 +173,7 @@ Verify:
 gcloud artifacts docker images list $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY
 
 
-# Step 10 — Create Secret Manager Secrets
+### Step 10 — Create Secret Manager Secrets [https://console.cloud.google.com/security/secret-manager/secrets, https://console.cloud.google.com/iam-admin/iam]
 
 Don't deploy your `.env` file.
 
@@ -179,6 +182,7 @@ Create secrets:
 ```bash
 $ echo -n "production" | gcloud secrets create ENVIRONMENT --data-file=-
 $ echo -n "YOUR_OPENAI_KEY" | gcloud secrets create OPENAI_API_KEY --data-file=-
+$ echo -n "YOUR_GOOGLE_API_KEY" | gcloud secrets create GOOGLE_API_KEY --data-file=-
 $ echo -n "YOUR_LANGFUSE_PUBLIC_KEY" | gcloud secrets create LANGFUSE_PUBLIC_KEY --data-file=-
 $ echo -n "YOUR_LANGFUSE_SECRET_KEY" | gcloud secrets create LANGFUSE_SECRET_KEY --data-file=-
 $ echo -n "REDIS_URL" | gcloud secrets create REDIS_URL   --data-file=-
@@ -196,55 +200,69 @@ GOOGLE_API_KEY       2026-10-09T14:06:21  automatic           -
 LANGFUSE_PUBLIC_KEY  2026-10-09T14:00:50  automatic           -
 ```
 
-### Step 11 — Create Cloud Run Service Account
+### Step 11 — Create the service account [https://console.cloud.google.com/iam-admin/serviceaccounts]
 
 Instead of using broad permissions, create a dedicated service account:
 
 ```bash
-$ gcloud iam service-accounts create $SERVICE --display-name="AI Weather Agent Service"
+$ gcloud iam service-accounts create $SERVICE_ACCOUNT --display-name="AI Weather Agent Service"
 Created service account [service-ai-python-weather].
 ```
 
-Grant Secret Manager access:
+### Step 12 - Grant Secret Manager access: [https://console.cloud.google.com/iam-admin/iam]
+  For better security, grant access only to the specific secret the application needs. For example, to allow access to the openai-api-key secret
 
 ```bash
 $ gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:$SERVICE@$PROJECT_ID.iam.gserviceaccount.com" \
+  --member="serviceAccount:$SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
-
-Updated IAM policy for project [project-workspace-511112].
-bindings:
-  role: roles/secretmanager.secretAccessor
-version: 1
-
+  -----
+  Updated IAM policy for project [project-workspace-511112].
+  bindings:
+    role: roles/secretmanager.secretAccessor
+  version: 1  
 ```
 
-This gives your Cloud Run application permission to read secrets.
-
----
-
-### Step 12 — Deploy to Cloud Run
+### Step 13 — Deploy to Cloud  [https://console.cloud.google.com/run/overview]
 
 Now deploy your Docker image:
 
 ```bash
-gcloud run deploy $APP_ID \
-  --image="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG" \
+gcloud run deploy "$SERVICE" \
+  --image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE}:${TAG}" \
   --region=asia-south2 \
   --platform=managed \
-  --service-account="$SERVICE$@$PROJECT_ID.iam.gserviceaccount.com" \
+  --service-account="${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --port=8000 \
   --memory=1Gi \
   --cpu=1 \
-  --set-env-vars=ENVIRONMENT=production
+  --set-env-vars="ENVIRONMENT=production"
 ```
 
-### Step 13 — Configure Secrets in Cloud Run
+  On Error
+  Permission 'iam.serviceaccounts.actAs' denied on service account $SERVICE_ACCOUNT
+
+  $ gcloud iam service-accounts add-iam-policy-binding \
+    "${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --project="$PROJECT_ID" \
+    --member="user:nabajyotisahariah009@gmail.com" \
+    --role="roles/iam.serviceAccountUser"
+
+  Updated IAM policy for serviceAccount [service1-ai-python-weather@project-workspace-511112.iam.gserviceaccount.com].
+  bindings:
+  - members:
+    - user:nabajyotisahariah009@gmail.com
+    role: roles/iam.serviceAccountUser
+  etag: BwZdhtWnsZk=
+  version: 1
+
+
+### Step 14 — Configure Secrets in Cloud Run [https://console.cloud.google.com/run/overview]
 
 You can bind Secret Manager secrets directly to environment variables:
 
 ```bash
-$ gcloud run services update $APP_ID \
+$ gcloud run services update $SERVICE \
   --region=$REGION \
   --set-secrets="OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,LANGFUSE_PUBLIC_KEY=LANGFUSE_PUBLIC_KEY:latest,LANGFUSE_SECRET_KEY=LANGFUSE_SECRET_KEY:latest"
 
@@ -255,12 +273,12 @@ Done.
 Service URL: https://ai-python-weather-agent-426899950764.asia-south2.run.app
 ```
 
-### Step 14 — Configure Environment Variables
+### Step 15 — Configure Environment Variables
 
 For non-sensitive configuration:
 
 ```bash
-gcloud run services update $APP_ID \
+gcloud run services update $SERVICE \
   --region=$REGION \
   --set-env-vars="ENVIRONMENT=production,LOG_LEVEL=INFO"
 ```
@@ -283,7 +301,7 @@ Keep credentials in **Secret Manager**, not environment variables stored directl
 For your weather API:
 
 ```bash
-gcloud run services update $APP_ID \
+gcloud run services update $SERVICE \
   --region=$REGION \
   --min=0 \
   --max=10
@@ -294,7 +312,7 @@ gcloud run services update $APP_ID \
 If this is a public demo API:
 
 ```bash
-gcloud run services add-iam-policy-binding $APP_ID \
+gcloud run services add-iam-policy-binding $SERVICE \
   --region=$REGION \
   --member="allUsers" \
   --role="roles/run.invoker"
@@ -311,7 +329,7 @@ For production, however, don't automatically make the service public. Prefer aut
 Get the URL:
 
 ```bash
-gcloud run services describe $APP_ID \
+gcloud run services describe $SERVICE \
   --region=$REGION \
   --format="value(status.url)"
 ```
@@ -327,7 +345,7 @@ curl "https://YOUR-CLOUD-RUN-URL/api/v1/weather/forecast/crewai?city=Chicago"
 Cloud Run logs:
 
 ```bash
-gcloud run services logs read $APP_ID --region=$REGION
+gcloud run services logs read $SERVICE --region=$REGION
 
 2026-10-09  - app.utils.logger - INFO - Logging configured successfully.
 2026-10-09  - root - INFO - Starting Weather Assistant API production
@@ -362,7 +380,7 @@ docker push \
 Deploy:
 
 ```bash
-gcloud run deploy $APP_ID \
+gcloud run deploy $SERVICE \
   --image=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG \
   --region=$REGION
 ```
