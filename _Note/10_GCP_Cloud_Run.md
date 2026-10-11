@@ -1,5 +1,5 @@
 
-### Step 1 — Prepare Your Python Application
+### Step 1 — Prepare the Python Service for Cloud Run Deployment
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
 ├── orchestrator/        # CrewAI multi-agent orchestrator
