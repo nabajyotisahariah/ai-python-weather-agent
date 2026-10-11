@@ -18,8 +18,8 @@ helm-mcp/                # Kubernetes Helm chart for FastMCP
 tests/                   # API and service tests
 
 ### Step 2: Prerequisites
-1. Install Docker and Docker Compose.
 
+1. Install Docker and Docker Compose.
 
 ### Step 3 — Create / Select GCP Project
 
@@ -135,7 +135,6 @@ Docker configuration file updated.
 ### Step 8 — Build Docker Image locally or VM
 
 ```
-
 Build:
 
 ```bash
@@ -177,7 +176,7 @@ gcloud artifacts docker images list $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITO
 
 Don't deploy your `.env` file.
 
-Create secrets:
+### Step 11 - Create secrets:
 
 ```bash
 $ echo -n "production" | gcloud secrets create ENVIRONMENT --data-file=-
@@ -200,7 +199,7 @@ GOOGLE_API_KEY       2026-10-09T14:06:21  automatic           -
 LANGFUSE_PUBLIC_KEY  2026-10-09T14:00:50  automatic           -
 ```
 
-### Step 11 — Create the service account [https://console.cloud.google.com/iam-admin/serviceaccounts]
+### Step 12 — Create the service account [https://console.cloud.google.com/iam-admin/serviceaccounts]
 
 Instead of using broad permissions, create a dedicated service account:
 
@@ -209,7 +208,7 @@ $ gcloud iam service-accounts create $SERVICE_ACCOUNT --display-name="AI Weather
 Created service account [service-ai-python-weather].
 ```
 
-### Step 12 - Grant Secret Manager access: [https://console.cloud.google.com/iam-admin/iam]
+### Step 13 - Grant Secret Manager access: [https://console.cloud.google.com/iam-admin/iam]
   For better security, grant access only to the specific secret the application needs. For example, to allow access to the openai-api-key secret
 
 ```bash
@@ -223,7 +222,7 @@ $ gcloud projects add-iam-policy-binding $PROJECT_ID \
   version: 1  
 ```
 
-### Step 13 — Deploy to Cloud  [https://console.cloud.google.com/run/overview]
+### Step 14 — Deploy to Cloud  [https://console.cloud.google.com/run/overview]
 
 Now deploy your Docker image:
 
@@ -257,7 +256,7 @@ gcloud run deploy "$SERVICE" \
   version: 1
 
 
-### Step 14 — Configure Secrets in Cloud Run [https://console.cloud.google.com/run/overview]
+### Step 15 — Configure Secrets in Cloud Run [https://console.cloud.google.com/run/overview]
 
 You can bind Secret Manager secrets directly to environment variables:
 
@@ -273,7 +272,7 @@ Done.
 Service URL: https://ai-python-weather-agent-426899950764.asia-south2.run.app
 ```
 
-### Step 15 — Configure Environment Variables
+### Step 16 — Configure Environment Variables
 
 For non-sensitive configuration:
 
@@ -296,7 +295,7 @@ Keep credentials in **Secret Manager**, not environment variables stored directl
 
 ---
 
-### Step 15 — Configure Scaling
+### Step 17 — Configure Scaling
 
 For your weather API:
 
@@ -307,7 +306,7 @@ gcloud run services update $SERVICE \
   --max=10
 ```
 
-### Step 16 — Make the Service Public
+### Step 18 — Make the Service Public
 
 If this is a public demo API:
 
@@ -324,7 +323,7 @@ For production, however, don't automatically make the service public. Prefer aut
 
 ---
 
-### Step 17 — Test Your Cloud Run API
+### Step 19 — Test Your Cloud Run API
 
 Get the URL:
 
@@ -340,7 +339,7 @@ For your forecast endpoint:
 curl "https://YOUR-CLOUD-RUN-URL/api/v1/weather/forecast/crewai?city=Chicago"
 ```
 
-### Step 18 — Check Logs
+### Step 20 — Check Logs
 
 Cloud Run logs:
 
@@ -355,7 +354,7 @@ gcloud run services logs read $SERVICE --region=$REGION
 
 ```
 
-### Step 19 — Create a New Version
+### Step 21 — Create a New Version
 
 When you change the application:
 
