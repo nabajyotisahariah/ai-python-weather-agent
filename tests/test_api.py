@@ -135,6 +135,21 @@ def test_health_check(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_redis_health_check_returns_service_unavailable_on_timeout(
+    client: TestClient,
+) -> None:
+    import redis
+
+    with patch(
+        "redis.Redis.from_url",
+        side_effect=redis.exceptions.TimeoutError("Redis timed out"),
+    ):
+        response = client.get("/api/v1/health/redis")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Redis connection error."}
+
+
 def test_current_weather_uses_redis_cache() -> None:
     async def run_test() -> None:
         cache = FakeRedis()
@@ -323,4 +338,3 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
             "message": "Mocked CrewAI Response",
             "isCached": False,
         }
-
