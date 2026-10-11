@@ -1,5 +1,6 @@
 
 ### Step 1 — Prepare the Python Service for Cloud Run Deployment
+```bash
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
 ├── orchestrator/        # CrewAI multi-agent orchestrator
@@ -16,22 +17,29 @@ script/                  # Helper and test scripts (e.g., FAISS index builder)
 helm-config/             # Kubernetes Helm chart for Application
 helm-mcp/                # Kubernetes Helm chart for FastMCP
 tests/                   # API and service tests
+```
 
 ### Step 2: Prerequisites
-
+```bash
 1. Install Docker and Docker Compose.
+```
 
 ### Step 3 — Create / Select GCP Project
 
 1. Created new Project on GCP
+  ```bash
     project-workspace
+  ```
 
 2. GCP Project list 
+    ```bash
     $ gcloud projects list
     PROJECT_ID                  NAME                        PROJECT_NUMBER  ENVIRONMENT
     python-project-1st-sep      Python Project 1st Sep      1040682241529
+    ```
 
 3. Sync gcloud
+    ```bash
     $ gcloud auth login
     Your current project is [XYZ Project].  You can change this setting by running:
     $ gcloud config set project PROJECT_ID
@@ -40,8 +48,10 @@ tests/                   # API and service tests
     PROJECT_ID                  NAME                        PROJECT_NUMBER  ENVIRONMENT
     project-workspace-511112    project-workspace           426899950764
     python-project-1st-sep      Python Project 1st Sep      1040682241529
+    ```
 
 4. Set your project:
+    ```bash
     $ gcloud config set project project-workspace-511112
 
     To update your Application Default Credentials quota project, use the `gcloud auth application-default set-quota-project` command.
@@ -54,11 +64,8 @@ tests/                   # API and service tests
     Updated property [core/project].
 
     Verify:
-
-    ```bash
     $ gcloud config get-value project
     project-workspace-511112
-
     ```
 
 ### 4 Set variables:
@@ -381,24 +388,9 @@ gcloud run deploy $SERVICE \
   --image=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$TAG \
   --region=$REGION
 ```
-### Run the Deployment Script
-
-Step 1 — Check the prerequisites
-  Run these commands in the same terminal:
-  gcloud --version
-  docker --version
-  docker info
-  gcloud auth list
-  gcloud config get-value project
-
-Step 2 — Fix the permissions
-  Run:
-    chmod +x deploy.sh
-
-Step 3 : Run the pipelie
-  ./deploy.sh production
 
 ### API Response after deployment
+```bash
 1 Health Check
 https://app-ai-python-weather-513793705540.asia-south2.run.app/api/v1/health
 {"status":"ok"}
@@ -448,3 +440,4 @@ curl --location 'https://app-ai-python-weather-513793705540.asia-south2.run.app/
     "message": "The current weather in Delhi is as follows:\n- Temperature: 33°C\n- Feels-like temperature: 32°C\n- Humidity: 37%\n- Weather condition: Dust storm\n- Wind speed: 14 km/h\n\nHere is the weather forecast for Delhi for the upcoming days:\n- October 11, 2026: Max temperature will be 34°C, Min temperature will be 25°C, with a Dust storm.\n- October 12, 2026: Max temperature will be 34°C, Min temperature will be 25°C, and it will be Sunny.\n- October 13, 2026: Max temperature will be 36°C, Min temperature will be 27°C, and it will be Sunny.\n\nIf you would like more days or additional details, feel free to ask!",
     "isCached": false
 }
+```
