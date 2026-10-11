@@ -135,6 +135,56 @@ def test_health_check(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_redis_health_check_returns_service_unavailable_on_timeout(
+    client: TestClient,
+) -> None:
+    import redis
+
+    with (
+        patch("app.config.settings.redis_enabled", True),
+        patch(
+            "redis.Redis.from_url",
+            side_effect=redis.exceptions.TimeoutError("Redis timed out"),
+        ),
+    ):
+        response = client.get("/api/v1/health/redis")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Redis connection error."}
+
+
+def test_redis_health_check_reports_disabled_without_connecting(
+    client: TestClient,
+) -> None:
+    with (
+        patch("app.config.settings.redis_enabled", False),
+        patch("redis.Redis.from_url") as redis_from_url,
+    ):
+        response = client.get("/api/v1/health/redis")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "disabled"}
+    redis_from_url.assert_not_called()
+
+
+def test_redis_cache_is_noop_when_disabled() -> None:
+    from app.utils.redis_cache import AsyncRedisCache
+
+    async def run_test() -> None:
+        with (
+            patch("app.config.settings.redis_enabled", False),
+            patch("app.utils.redis_cache.Redis.from_url") as redis_from_url,
+        ):
+            cache = AsyncRedisCache()
+            assert cache.redis is None
+            assert await cache.get("weather:test") is None
+            await cache.set("weather:test", {"value": "test"})
+
+        redis_from_url.assert_not_called()
+
+    asyncio.run(run_test())
+
+
 def test_current_weather_uses_redis_cache() -> None:
     async def run_test() -> None:
         cache = FakeRedis()
@@ -323,4 +373,3 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
             "message": "Mocked CrewAI Response",
             "isCached": False,
         }
-

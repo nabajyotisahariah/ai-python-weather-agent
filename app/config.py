@@ -34,7 +34,7 @@ def load_production_secrets() -> None:
     secret_data = get_secret(secret_name)
     secret_values = dotenv_values(stream=StringIO(secret_data))
     #logger.info("Production secrets loaded successfully. Keys: %s",list(secret_values.keys()))
-    print("Production secrets loaded successfully. Keys:", secret_values)
+    logger.info("Production secrets loaded successfully. Keys:", secret_values)
     for name, value in secret_values.items():
         if value is not None:
             os.environ.setdefault(name, value)
@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     weather_timeout_seconds: float = 10.0
 
     # Redis
+    redis_enabled: bool = False
     redis_url: str = "redis://localhost:6379/0"
     redis_cache_ttl_seconds: int = 3600
 
@@ -95,7 +96,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-logger.info("Loaded settings for environment: %s", settings.environment)
+logger.info("Loaded settings for environment: %s", settings)
 
 
 def validate_settings() -> None:
@@ -132,8 +133,9 @@ def validate_settings() -> None:
         required = {
             "OPENAI_API_KEY": settings.openai_api_key,
             "GOOGLE_API_KEY": settings.google_api_key,
-            "REDIS_URL": settings.redis_url,
         }
+        if settings.redis_enabled:
+            required["REDIS_URL"] = settings.redis_url
 
     else:
         logger.error(

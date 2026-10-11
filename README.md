@@ -294,6 +294,12 @@ Invoke-RestMethod -Uri "http://localhost:8000/api/v1/weather/agent" `
                   -ContentType "application/json"
 ```
 
+```
+curl --location 'http://localhost:8000/api/v1/weather/agent' \
+--header 'Content-Type: application/json' \
+--data '{"query": "What is the weather of Delhi"}'
+```
+
 Example response:
 
 ```json

@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -71,6 +72,10 @@ app.add_middleware(
 logging.info("Initializing API routes")
 logging.info("Environment: %s", settings.environment)
 logging.info("OpenAI Model: %s", settings.openai_api_model)
+logging.info("######################")
+for key, value in os.environ.items():
+    logging.info("%s=%s", key, value)
+logging.info("######################")
 
 # Include Routers
 app.include_router(weather.router, prefix="/api/v1", tags=["Weather"])

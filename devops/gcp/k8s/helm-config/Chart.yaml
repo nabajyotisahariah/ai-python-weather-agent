@@ -1,0 +1,6 @@
+apiVersion: v2
+name: weather-agent
+description: AI Python Weather Agent
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
