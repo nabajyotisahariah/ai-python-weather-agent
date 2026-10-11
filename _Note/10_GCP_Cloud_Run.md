@@ -67,6 +67,10 @@ tests/                   # API and service tests
     $ gcloud config get-value project
     project-workspace-511112
     ```
+5. Delete a project
+  ```bash
+  gcloud projects delete python-project-1st-sep
+  ```
 
 ### 4 Set variables:
 
