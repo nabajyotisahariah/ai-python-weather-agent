@@ -37,10 +37,15 @@ Error
     service account service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com does not have access to the bucket;",
 ```
 
-### Step 2: Fix the Cloud Build staging bucket error
+    Note: Fix the Cloud Build staging bucket error
     If the error's bucket and service account are confirmed to be the correct ones, grant the deployment service account access to the staging bucket. For example, using Cloud Shell or another Bash-compatible terminal:
     
-gcloud storage buckets add-iam-policy-binding \
-  gs://staging.workspace-prod-511311.appspot.com \
-  --member="serviceAccount:service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+    gcloud storage buckets add-iam-policy-binding \
+      gs://staging.workspace-prod-511311.appspot.com \
+      --member="serviceAccount:service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com" \
+      --role="roles/storage.admin"
+
+  https://console.cloud.google.com/iam-admin/iam
+  Principal                                                                Name                      Role
+  service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com   service-app-engine-demo	  Logs Writer
+
