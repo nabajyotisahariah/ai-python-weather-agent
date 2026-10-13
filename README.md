@@ -125,6 +125,9 @@ Start the development server from the project root:
 
 ```powershell
 uvicorn app.main:app --reload
+
+App Engine enviroment variable  
+ENVIRONMENT=production GOOGLE_CLOUD_PROJECT=workspace-prod-511311 DEPLOY_TYPE=app-engine uvicorn app.main:app --reload
 ```
 
 Alternatively:

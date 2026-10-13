@@ -1,0 +1,66 @@
+pass `ENVIRONMENT=production` directly from the command line when starting Uvicorn. However, the syntax differs between Windows and Linux/macOS.
+
+## 1. Windows PowerShell
+
+```
+$env:ENVIRONMENT="production"
+$env:GOOGLE_CLOUD_PROJECT="workspace-prod-511311"
+$env:DEPLOY_TYPE="app-engine"
+
+uvicorn app.main:app --reload
+```
+
+## 2. Windows CMD
+
+```
+set ENVIRONMENT=production
+set GOOGLE_CLOUD_PROJECT=workspace-prod-511311
+set DEPLOY_TYPE=app-engine
+
+uvicorn app.main:app --reload
+```
+
+## 3. Linux / macOS
+
+```
+ENVIRONMENT=production \
+GOOGLE_CLOUD_PROJECT=workspace-prod-511311 \
+DEPLOY_TYPE=app-engine \
+uvicorn app.main:app --reload
+```
+
+## 4. Read the values in Python
+
+Your existing code will work with these environment variables:
+
+```
+import os
+
+environment = os.getenv("ENVIRONMENT", "development").lower()
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
+DEPLOY_TYPE = os.getenv("DEPLOY_TYPE")
+
+print(f"Environment: {environment}")
+print(f"GOOGLE_CLOUD_PROJECT: {GOOGLE_CLOUD_PROJECT}")
+print(f"DEPLOY_TYPE: {DEPLOY_TYPE}")
+```
+
+Expected output:
+
+```
+Environment: production
+GOOGLE_CLOUD_PROJECT: workspace-prod-511311
+DEPLOY_TYPE: app-engine
+```
+
+## 5. Recommended for your Weather Agent
+
+If you want to pass the environment in a single command on Windows PowerShell, use:
+
+```
+$env:ENVIRONMENT="production"; uvicorn app.main:app --reload
+```
+
+Note: `--reload` is intended for development. For production deployment to App Engine, run the application using your production server configuration without `--reload`.
+
+Also, if you set environment variables in the command line, your `os.getenv()` calls will take precedence over fallback values loaded from `.env`.

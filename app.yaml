@@ -31,4 +31,6 @@ automatic_scaling:
 env_variables:
   ENVIRONMENT: "production"
   REDIS_ENABLED: "false"
+  GOOGLE_CLOUD_PROJECT: "workspace-prod-511311"
+  DEPLOY_TYPE: "app-engine"
 

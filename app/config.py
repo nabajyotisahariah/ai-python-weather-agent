@@ -23,10 +23,8 @@ SECRET_NAMES = [
 ]
 
 
-def load_secrets():
-    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+def load_secrets(project_id):
     client = secretmanager.SecretManagerServiceClient()
-
     for secret_id in SECRET_NAMES:
         name = (
             f"projects/{project_id}/secrets/"
@@ -36,18 +34,23 @@ def load_secrets():
         response = client.access_secret_version(
             request={"name": name}
         )
-
         os.environ[secret_id] = (
             response.payload.data.decode("UTF-8")
         )
+        print(f"Loaded secret: {secret_id} = {os.environ[secret_id]}")
 
-environment = os.getenv("ENVIRONMENT", dotenv_values(ENV_FILE).get("environment", "development"),).lower()
-GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
-DEPLOY_TYPE = os.getenv("DEPLOY_TYPE")
-logger.info(f"Environment: {environment} GOOGLE_CLOUD_PROJECT {GOOGLE_CLOUD_PROJECT} DEPLOY_TYPE {DEPLOY_TYPE}")
+# Prod [ENVIRONMENT=production GOOGLE_CLOUD_PROJECT=workspace-prod-511311 DEPLOY_TYPE=app-engine uvicorn app.main:app]
+# Dev [app.main:app --reload]
 
-if environment == "production" and GOOGLE_CLOUD_PROJECT != "" and DEPLOY_TYPE == "appengine":
-    load_secrets()
+environment = os.getenv("ENVIRONMENT", "development").lower()
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+DEPLOY_TYPE = os.getenv("DEPLOY_TYPE", "local").lower()
+
+print(f"Environment: {environment} GOOGLE_CLOUD_PROJECT: {GOOGLE_CLOUD_PROJECT} DEPLOY_TYPE: {DEPLOY_TYPE}")
+
+# Load secrets from Google Cloud Secret Manager if in production and running on App Engine
+if environment == "production" and GOOGLE_CLOUD_PROJECT != "" and DEPLOY_TYPE == "app-engine":
+    load_secrets(GOOGLE_CLOUD_PROJECT)
 
 
 class Settings(BaseSettings):
@@ -94,7 +97,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-logger.info("Loaded settings for environment: %s", settings)
+print("Loaded settings for environment: %s", settings)
 
 
 def validate_settings() -> None:
