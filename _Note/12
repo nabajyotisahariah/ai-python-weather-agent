@@ -30,10 +30,32 @@ The App Engine region cannot be changed after creation.
 From the root directory of `ai-python-weather-agent`, execute:
 
 ```bash
-gcloud app deploy -v=v01
+$ gcloud app deploy  -v=v01
+Services to deploy:
+
+descriptor:                  [/home/local/ai-python-weather-agent/app.yaml]
+source:                      [/home/local/ai-python-weather-agent]
+target project:              [workspace-prod-511311]
+target service:              [default]
+target version:              [v01]
+target url:                  [https://workspace-prod-511311.el.r.appspot.com]
+target service account:      [service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com]
+
+
+File upload done.
+Waiting for operation [apps/workspace-prod-511311/operations/operation-1791900074055-65db93f63187f-00ff634f-bbe74626] to complete...done.                    
+Setting traffic split for service [default]...done.                                                                                                          
+Deployed service [default] to [https://workspace-prod-511311.el.r.appspot.com]
+
+You can stream logs from the command line by running:
+  $ gcloud app logs tail -s default
+
+To view your application in the web browser run:
+  $ gcloud app browse
 ```
-  Error
-    invalid bucket "staging.workspace-prod-511311.appspot.com"; 
+
+### Bucket Permission Issue on Deployment
+   invalid bucket "staging.workspace-prod-511311.appspot.com"; 
     service account service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com does not have access to the bucket
 
   Note: Allow the bucket permossion
@@ -115,21 +137,43 @@ service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com   service-
   --member="serviceAccount:${RUNTIME_SA}" \
   --role="roles/secretmanager.secretAccessor"
 
-  Step 4: Configure app.yaml
+### Step 4: Configure app.yaml
 
-    runtime: python311
+    
+runtime: python311
 
-    entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
-    service_account: service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com
+service_account: service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com
 
-    env_variables:
-      ENVIRONMENT: "production"
-      GOOGLE_CLOUD_PROJECT: "workspace-prod-511311"
+instance_class: F2
 
-  Step 5: Application Changes
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1
+  target_cpu_utilization: 0.65
+  max_concurrent_requests: 1
+
+env_variables:
+  ENVIRONMENT: "production"
+  REDIS_ENABLED: "false"
+  GOOGLE_CLOUD_PROJECT: "workspace-prod-511311"
+  DEPLOY_TYPE: "app-engine"
+
+
+### Step 5: Application Changes
     App Engine Standard does not support the same --set-secrets secret-to-environment-variable mapping command as Cloud Run.
 
     In Cloud Run, you can map Secret Manager versions directly to environment variables using gcloud run services update --set-secrets. For your App Engine Weather Agent, you have two practical options:
       - Option 1 — Recommended: Retrieve secrets through the Secret Manager Python client at runtime.
       - Option 2: Use App Engine Flexible with a custom container and implement secret retrieval in the container startup process. This still isn't the same native gcloud run --set-secrets mapping workflow.
+
+### Debugging on GCP
+    Logs Explorer 
+
+### Deployed Endpoints
+    App Engine
+    https://workspace-prod-511311.el.r.appspot.com/api/v1/weather/langgraph?city=delhi
+
+    Cloud Run
+    https://app-ai-python-weather-513793705540.asia-south2.run.app/

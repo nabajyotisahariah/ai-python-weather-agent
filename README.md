@@ -57,27 +57,44 @@ Create the local environment file:
 Copy-Item .env.example .env
 ```
 
-Update `.env` with valid provider credentials:
+The app reads runtime settings from `app/config.py` using Pydantic settings. The `.env` file can contain either the uppercase environment variable names shown below or a lower-case `environment` value; the settings loader normalizes them for the application.
+
+Minimal local configuration:
 
 ```env
 environment=development
-CREWAI_TRACING_ENABLED=false
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_API_MODEL=gpt-4o-mini
-APP_NAME=Weather AI API
-APP_VERSION=1.0.0
 GOOGLE_API_KEY=your-google-api-key
-GOOGLE_ADK_MODEL=gemini-3.5-flash-lite
+GOOGLE_ADK_MODEL=gemini-2.0-flash
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
+REDIS_ENABLED=false
 REDIS_URL=redis://localhost:6379/0
 REDIS_CACHE_TTL_SECONDS=3600
 LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
 LANGFUSE_SECRET_KEY=your-langfuse-secret-key
-LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+VECTOR_STORE=faiss
 ```
 
-`OPENAI_API_KEY` is required in development because CrewAI, LangGraph, and AutoGen use OpenAI. `GOOGLE_API_KEY` is required only when using the Google ADK endpoint. Redis defaults to `redis://localhost:6379/0`; set `REDIS_URL` when Redis is running elsewhere.
+Required settings:
+
+- `OPENAI_API_KEY` is required in development and production.
+- `GOOGLE_API_KEY` is required in production when the Google ADK path is used.
+- `REDIS_URL` is only required when `REDIS_ENABLED=true` and Redis is running remotely.
+- `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are optional; they enable Langfuse telemetry when both are present.
+
+Production configuration for GCP App Engine:
+
+```powershell
+ENVIRONMENT=production
+GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+DEPLOY_TYPE=app-engine
+uvicorn app.main:app
+```
+
+When `ENVIRONMENT=production`, `GOOGLE_CLOUD_PROJECT` is set, and `DEPLOY_TYPE=app-engine`, the application loads the required secrets from Google Secret Manager. For Kubernetes or Cloud Run, the secrets are typically injected as environment variables instead.
 
 ### Langfuse observability
 

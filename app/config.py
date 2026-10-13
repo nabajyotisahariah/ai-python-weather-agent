@@ -48,7 +48,9 @@ DEPLOY_TYPE = os.getenv("DEPLOY_TYPE", "local").lower()
 
 print(f"Environment: {environment} GOOGLE_CLOUD_PROJECT: {GOOGLE_CLOUD_PROJECT} DEPLOY_TYPE: {DEPLOY_TYPE}")
 
-# Load secrets from Google Cloud Secret Manager if in production and running on App Engine
+# GCP APP Engine: Load secrets from Secret Manager using google.cloud python library. This is required for production deployment on GCP App Engine.
+# GCP Kubernates & Cloud Run: Enviromnment variables & Secrete Keys are automatically injected from Secret Manager. No need to load secrets using google.cloud python library.
+# Local Development: Load secrets from .env file using dotenv library. This is required for local development.
 if environment == "production" and GOOGLE_CLOUD_PROJECT != "" and DEPLOY_TYPE == "app-engine":
     load_secrets(GOOGLE_CLOUD_PROJECT)
 
