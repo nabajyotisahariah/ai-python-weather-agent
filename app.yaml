@@ -18,7 +18,7 @@ runtime: python311
 
 entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
-service_account: service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com
+service_account: python-workspace-prod@appspot.gserviceaccount.com
 
 instance_class: F2
 
@@ -31,6 +31,6 @@ automatic_scaling:
 env_variables:
   ENVIRONMENT: "production"
   REDIS_ENABLED: "false"
-  GOOGLE_CLOUD_PROJECT: "workspace-prod-511311"
+  GOOGLE_CLOUD_PROJECT: "python-workspace-prod"
   DEPLOY_TYPE: "app-engine"
 
