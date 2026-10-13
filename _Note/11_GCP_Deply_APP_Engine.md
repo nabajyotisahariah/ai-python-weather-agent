@@ -44,7 +44,6 @@ The example below assumes your FastAPI application object is `app` inside `app/m
 Create this file in the repository root.
 
 ```
-
 runtime: python311
 
 entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -53,12 +52,14 @@ instance_class: F2
 
 automatic_scaling:
   min_instances: 0
-  max_instances: 3
+  max_instances: 1
   target_cpu_utilization: 0.65
+  max_concurrent_requests: 2
 
 env_variables:
   ENVIRONMENT: "production"
   REDIS_ENABLED: "false"
+
 
 ```
 
@@ -72,53 +73,17 @@ Why these settings?
 
 App Engine installs Python dependencies from `requirements.txt` during deployment. See the [official Python runtime documentation](https://docs.cloud.google.com/appengine/docs/standard/python3/runtime).&#x20;
 
-[image](https://www.google.com/s2/favicons?domain=https://docs.cloud.google.com\&sz=32)
-
-Google Cloud Documentation
-
-+1
-
-
-
 ### Step 2: Update `requirements.txt`
 
 Make sure the dependencies needed to start FastAPI are included:
 
-```
-fastapi
-uvicorn[standard]
-```
-
-Keep the existing dependencies required by your application, including the appropriate versions of CrewAI, LangGraph, AutoGen, Google ADK, Redis, and Google Cloud Secret Manager.
-
-Do not replace your entire requirements file with the two packages above. Pin compatible dependency versions after validating them in your local Python 3.11 environment.
-
-### Step 3: Configure `.gcloudignore`
-
-Prevent local files and secrets from being uploaded unnecessarily.
-
-```
-.env
-.env.*
-!.env.example
-.git/
-.venv/
-venv/
-__pycache__/
-.pytest_cache/
-*.pyc
-tests/
-```
-
-Keep `.env` for local development only. In production, retrieve API keys from Secret Manager using the application's runtime service account. Your production configuration must not depend on a local `.env` file.
-
-## 3. Configure your Google Cloud project
+### 3. Configure your Google Cloud project
 
 The following commands use your existing project ID, `python-project-1st-sep`.
 
 Run them from the Google Cloud CLI terminal.
 
-### Step 1: Select the project and enable APIs
+### 4 Select the project and enable APIs
 
 ```
 gcloud auth login
@@ -134,7 +99,7 @@ gcloud services enable \
 
 You need the appropriate IAM permissions to enable services and deploy the application.
 
-### Step 2: Create the App Engine application
+### 5: Create the App Engine application
 
 ```
 gcloud app create --region=asia-south1
@@ -148,12 +113,22 @@ You can check it with:
 gcloud app describe
 ```
 
-### Step 3: Deploy the application
+### 6 Deploy the application
 
 From the root directory of `ai-python-weather-agent`, execute:
 
 ```
-gcloud app deploy
+gcloud app deploy -v=v01
+
+Error :
+  Details: [
+  [
+    {
+      "@type": "type.googleapis.com/google.rpc.DebugInfo",
+      "detail": "Failed to create cloud build:
+                invalid bucket \"staging.workspace-prod-511311.appspot.com\"; 
+                service account service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com does not have access to the bucket;",
+      "
 ```
 
 Review the deployment prompt and confirm when ready. To open the deployed application:
@@ -177,52 +152,7 @@ Google Cloud Documentation
 +1
 
 
-
-## 4. Handle Redis and Secret Manager correctly
-
-Your weather agent uses Redis caching and Google Secret Manager, so these are the two most important production considerations.
-
-### Redis configuration
-
-Your local Docker Compose Redis service is not automatically available to App Engine. You have three options:
-
-| Option                             | Recommendation                                                               |
-| ---------------------------------- | ---------------------------------------------------------------------------- |
-| Disable Redis temporarily          | Best for the first deployment, if your code supports running without caching |
-| Google Cloud Memorystore for Redis | Recommended for managed Redis caching                                        |
-| Redis on a VM                      | Possible, but you manage more infrastructure                                 |
-
-If you use Memorystore with App Engine Standard, you need a Serverless VPC Access connector and appropriate network configuration to reach the private Redis address.&#x20;
-
-[image](https://www.google.com/s2/favicons?domain=https://docs.cloud.google.com\&sz=32)
-
-Google Cloud Documentation
-
-+1
-
-
-
-Your production environment would look like this:
-
-```
-Client
-  |
-  v
-App Engine
-  |
-  v
-FastAPI Weather Agent
-  |
-  +---- CrewAI / LangGraph / AutoGen / Google ADK
-  |
-  +---- External Weather API
-  |
-  +---- OpenAI / Gemini
-  |
-  +---- Memorystore Redis
-```
-
-### Secret Manager configuration
+### 7 Secret Manager configuration
 
 For production, ensure the App Engine runtime service account has only the permissions it needs, including `roles/secretmanager.secretAccessor` on the relevant secrets.
 
@@ -261,7 +191,7 @@ If deployment fails or requests return errors, check:
 - Redis connection errors: verify Redis is disabled or correctly connected through the VPC.
 - Timeouts: AI model calls can take longer than ordinary API requests; review App Engine request limits and consider asynchronous job processing for lengthy workflows.
 
-## 6. App Engine vs Cloud Run vs GKE for your weather agent
+## 8. App Engine vs Cloud Run vs GKE for your weather agent
 
 | Capability                | App Engine Standard    | Cloud Run                           | GKE                            |
 | ------------------------- | ---------------------- | ----------------------------------- | ------------------------------ |
@@ -270,7 +200,3 @@ If deployment fails or requests return errors, check:
 | Kubernetes control        | No                     | No                                  | Yes                            |
 | Autoscaling               | Yes                    | Yes                                 | Configurable                   |
 | Best fit                  | Managed Python web API | Containerized FastAPI and AI agents | Complex multi-service platform |
-
-My recommendation: Use App Engine to learn and validate a managed Python deployment. For your existing Docker-based, multi-agent weather application, Cloud Run is also a strong option because it supports custom containers without requiring you to manage a Kubernetes cluster. Keep GKE for cases where you need Kubernetes-specific networking, workload management, or platform control.
-
-Official reference: [App Engine Standard environment](https://docs.cloud.google.com/appengine/docs/standard/overview).

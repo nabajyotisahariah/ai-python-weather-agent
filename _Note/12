@@ -1,0 +1,46 @@
+### Step 1: Configure the Google Cloud project
+
+Run these commands from your terminal:
+gcloud auth login
+
+gcloud config set project workspace-prod-511311
+
+gcloud config get-value project
+
+### Step 2: Enable the required APIs:
+
+gcloud services enable \
+  appengine.googleapis.com \
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
+  secretmanager.googleapis.com
+
+Check whether App Engine is already initialized:
+gcloud app describe
+
+### 5: Create the App Engine application
+
+```
+gcloud app create --region=asia-south1
+```
+The App Engine region cannot be changed after creation.
+
+### 6 Deploy the application
+
+From the root directory of `ai-python-weather-agent`, execute:
+
+```
+gcloud app deploy -v=v01
+
+Error
+    invalid bucket \"staging.workspace-prod-511311.appspot.com\"; 
+    service account service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com does not have access to the bucket;",
+```
+
+### Step 2: Fix the Cloud Build staging bucket error
+    If the error's bucket and service account are confirmed to be the correct ones, grant the deployment service account access to the staging bucket. For example, using Cloud Shell or another Bash-compatible terminal:
+    
+gcloud storage buckets add-iam-policy-binding \
+  gs://staging.workspace-prod-511311.appspot.com \
+  --member="serviceAccount:service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
