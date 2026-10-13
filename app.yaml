@@ -18,6 +18,8 @@ runtime: python311
 
 entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
+service_account: service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com
+
 instance_class: F2
 
 automatic_scaling:

@@ -8,48 +8,46 @@ import sys
 
 from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from google.cloud import secretmanager
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_FILE = BASE_DIR / ".env"
-DEFAULT_SECRET_NAME = (
-    "projects/1040682241529/secrets/"
-    "python-ai-weather-application/versions/latest"
-)
+
+SECRET_NAMES = [
+    "OPENAI_API_KEY",
+    "GOOGLE_API_KEY",
+    "LANGFUSE_PUBLIC_KEY",
+    "LANGFUSE_SECRET_KEY",
+]
 
 
-def get_secret(secret_name: str) -> str:
-    """Read a secret version from Google Secret Manager."""
-    from google.cloud import secretmanager
-
+def load_secrets():
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     client = secretmanager.SecretManagerServiceClient()
-    response = client.access_secret_version(request={"name": secret_name})
-    return response.payload.data.decode("UTF-8")
 
+    for secret_id in SECRET_NAMES:
+        name = (
+            f"projects/{project_id}/secrets/"
+            f"{secret_id}/versions/latest"
+        )
 
-def load_production_secrets() -> None:
-    """Load dotenv-style production secrets into the process environment."""
-    secret_name = os.getenv("GCP_SECRET_NAME", DEFAULT_SECRET_NAME)
-    secret_data = get_secret(secret_name)
-    secret_values = dotenv_values(stream=StringIO(secret_data))
-    #logger.info("Production secrets loaded successfully. Keys: %s",list(secret_values.keys()))
-    logger.info("Production secrets loaded successfully. Keys:", secret_values)
-    for name, value in secret_values.items():
-        if value is not None:
-            os.environ.setdefault(name, value)
+        response = client.access_secret_version(
+            request={"name": name}
+        )
 
-    logger.info("Loaded production configuration from Secret Manager")
+        os.environ[secret_id] = (
+            response.payload.data.decode("UTF-8")
+        )
 
+environment = os.getenv("ENVIRONMENT", dotenv_values(ENV_FILE).get("environment", "development"),).lower()
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
+DEPLOY_TYPE = os.getenv("DEPLOY_TYPE")
+logger.info(f"Environment: {environment} GOOGLE_CLOUD_PROJECT {GOOGLE_CLOUD_PROJECT} DEPLOY_TYPE {DEPLOY_TYPE}")
 
-environment = os.getenv(
-    "ENVIRONMENT",
-    dotenv_values(ENV_FILE).get("environment", "development"),
-).lower()
-logger.info(f"Environment: {environment}")
-
-#if environment == "production":
-#    load_production_secrets()
+if environment == "production" and GOOGLE_CLOUD_PROJECT != "" and DEPLOY_TYPE == "appengine":
+    load_secrets()
 
 
 class Settings(BaseSettings):
