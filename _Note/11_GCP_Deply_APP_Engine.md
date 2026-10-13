@@ -1,37 +1,49 @@
-### Step 1: Configure the Google Cloud project
+# Google App Engine Deployment Notes
 
-Run these commands from your terminal:
+## 1. Configure the Google Cloud project
+
+```bash
 gcloud auth login
-
 gcloud config set project workspace-prod-511311
-
 gcloud config get-value project
+```
 
-### Step 2: Enable the required APIs:
+## 2. Enable required APIs
 
+```bash
 gcloud services enable \
   appengine.googleapis.com \
   cloudbuild.googleapis.com \
   artifactregistry.googleapis.com \
   secretmanager.googleapis.com
+```
 
 Check whether App Engine is already initialized:
-gcloud app describe
 
-### 5: Create the App Engine application
+```bash
+gcloud app describe
+```
+
+## 3. Create the App Engine application
 
 ```bash
 gcloud app create --region=asia-south1
 ```
-The App Engine region cannot be changed after creation.
 
-### 6 Deploy the application
+> The App Engine region cannot be changed after creation.
 
-From the root directory of `ai-python-weather-agent`, execute:
+## 4. Deploy the application
+
+From the root directory of `ai-python-weather-agent`, run:
 
 ```bash
-$ gcloud app deploy  -v=v01
-  Services to deploy:
+gcloud app deploy -v=v01
+```
+
+Example output:
+
+```bash
+Services to deploy:
 
   descriptor:                  [/home/local/ai-python-weather-agent/app.yaml]
   source:                      [/home/local/ai-python-weather-agent]
@@ -40,96 +52,105 @@ $ gcloud app deploy  -v=v01
   target version:              [v01]
   target url:                  [https://workspace-prod-511311.el.r.appspot.com]
   target service account:      [service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com]
-                                                                                                   
+
 Deployed service [default] to [https://workspace-prod-511311.el.r.appspot.com]
 ```
 
-### Bucket Permission Issue on Deployment
-   invalid bucket "staging.workspace-prod-511311.appspot.com"; 
-    service account service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com does not have access to the bucket
+## 5. Bucket permission issue during deployment
 
-  Note: Allow the bucket permossion
+If you see an error like:
 
 ```bash
-    gcloud storage buckets add-iam-policy-binding \
-      gs://staging.workspace-prod-511311.appspot.com \
-      --member="serviceAccount:service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com" \
-      --role="roles/storage.admin"
-
-  https://console.cloud.google.com/iam-admin/iam
-  Principal                                                                Name                      Role
-service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com   service-app-engine-demo	  Logs Writer
+invalid bucket "staging.workspace-prod-511311.appspot.com";
+service account service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com does not have access to the bucket
 ```
 
-  Error
-    ERROR: failed to initialize analyzer: validating registry read access:: Permission 'artifactregistry.repositories.downloadArtifacts' 
+Grant the required storage permission:
 
-  Added Permission on Service "service-app-engine-demo" manually
-    Artifact Registry Create-on-Push Writer
-    Artifact Registry Reader
-    Logs Writer
-    Secret Manager Secret Accessor
-
-  Alternatily using command line
-  ---
-  ```bash
-  PROJECT_ID="workspace-prod-511311"
-  SERVICE_ACCOUNT="service-app-engine-demo@${PROJECT_ID}.iam.gserviceaccount.com"
-
-  # 1. Artifact Registry Create-on-Push Writer
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:${SERVICE_ACCOUNT}" \
-    --role="roles/artifactregistry.createOnPushWriter"
-
-  # 2. Artifact Registry Reader
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:${SERVICE_ACCOUNT}" \
-    --role="roles/artifactregistry.reader"
-
-  # 3. Logs Writer
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:${SERVICE_ACCOUNT}" \
-    --role="roles/logging.logWriter"
-
-  # 4. Secret Manager Secret Accessor
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:${SERVICE_ACCOUNT}" \
-    --role="roles/secretmanager.secretAccessor"
-
-  Note:
-    For Service Account in the App Engine 
-          App Engine > Dashboard > Settings
-
-    Application Settings
-        Default service account
-        service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com
+```bash
+gcloud storage buckets add-iam-policy-binding \
+  gs://staging.workspace-prod-511311.appspot.com \
+  --member="serviceAccount:service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
 ```
-### Screte Manager Addition in the Application
 
-  Step 1: Create a secret
-    $ echo -n "YOUR_OPENAI_KEY" | gcloud secrets create OPENAI_API_KEY --data-file=-
-    $ echo -n "YOUR_GOOGLE_API_KEY" | gcloud secrets create GOOGLE_API_KEY --data-file=-
-    $ echo -n "YOUR_LANGFUSE_PUBLIC_KEY" | gcloud secrets create LANGFUSE_PUBLIC_KEY --data-file=-
-    $ echo -n "YOUR_LANGFUSE_SECRET_KEY" | gcloud secrets create LANGFUSE_SECRET_KEY --data-file=-
+You can verify the service account and roles in the Google Cloud Console:
 
+- IAM & Admin > IAM
+- Service account: `service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com`
 
-  Step 2: Enable Secret Manager API
-      gcloud services enable secretmanager.googleapis.com \
-  --project=workspace-prod-511311
+## 6. Artifact Registry / Logging / Secret Manager permissions
 
-  Step 3: Identify the App Engine runtime service account & Grant the access
+If deployment fails with errors such as:
 
-    PROJECT_ID="workspace-prod-511311"
-    RUNTIME_SA="service-app-engine-demo@${PROJECT_ID}.iam.gserviceaccount.com"
+```bash
+ERROR: failed to initialize analyzer: validating registry read access:: Permission 'artifactregistry.repositories.downloadArtifacts'
+```
 
-    gcloud secrets add-iam-policy-binding OPENAI_API_KEY \
+Grant the required IAM roles:
+
+```bash
+PROJECT_ID="workspace-prod-511311"
+SERVICE_ACCOUNT="service-app-engine-demo@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/artifactregistry.createOnPushWriter"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/artifactregistry.reader"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/logging.logWriter"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/secretmanager.secretAccessor"
+```
+Or we can add manually below permission on the Service Account
+# 1. Artifact Registry Create-on-Push Writer
+# 2. Artifact Registry Reader
+# 3. Logs Writer
+# 4. Secret Manager Secret Accessor
+
+> In App Engine, this service account is configured under: App Engine > Dashboard > Settings > Application Settings > Default service account
+
+## 7. Add secrets to Secret Manager
+
+### Create secrets
+
+```bash
+echo -n "YOUR_OPENAI_KEY" | gcloud secrets create OPENAI_API_KEY --data-file=-
+echo -n "YOUR_GOOGLE_API_KEY" | gcloud secrets create GOOGLE_API_KEY --data-file=-
+echo -n "YOUR_LANGFUSE_PUBLIC_KEY" | gcloud secrets create LANGFUSE_PUBLIC_KEY --data-file=-
+echo -n "YOUR_LANGFUSE_SECRET_KEY" | gcloud secrets create LANGFUSE_SECRET_KEY --data-file=-
+```
+
+### Enable Secret Manager API
+
+```bash
+gcloud services enable secretmanager.googleapis.com --project=workspace-prod-511311
+```
+
+### Grant access to the App Engine runtime service account
+
+```bash
+PROJECT_ID="workspace-prod-511311"
+RUNTIME_SA="service-app-engine-demo@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud secrets add-iam-policy-binding OPENAI_API_KEY \
   --project=workspace-prod-511311 \
   --member="serviceAccount:${RUNTIME_SA}" \
   --role="roles/secretmanager.secretAccessor"
+```
 
-### Step 4: Configure app.yaml
+Repeat the same pattern for each required secret as needed.
 
-    
+## 8. Configure `app.yaml`
+
+```yaml
 runtime: python311
 
 entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -149,35 +170,50 @@ env_variables:
   REDIS_ENABLED: "false"
   GOOGLE_CLOUD_PROJECT: "workspace-prod-511311"
   DEPLOY_TYPE: "app-engine"
+```
 
+## 9. Application changes required
 
-### Step 5: Application Changes
-    App Engine Standard does not support the same --set-secrets secret-to-environment-variable mapping command as Cloud Run.
+App Engine Standard does not support the same `--set-secrets` mapping flow used by Cloud Run.
 
-    In Cloud Run, you can map Secret Manager versions directly to environment variables using gcloud run services update --set-secrets. For your App Engine Weather Agent, you have two practical options:
-      - Option 1 — Recommended: Retrieve secrets through the Secret Manager Python client at runtime.
-      - Option 2: Use App Engine Flexible with a custom container and implement secret retrieval in the container startup process. This still isn't the same native gcloud run --set-secrets mapping workflow.
+For the weather agent on App Engine, the practical options are:
 
-### Debugging on GCP
-    Logs Explorer 
+- Option 1 (recommended): Load secrets at runtime through the Secret Manager Python client.
+- Option 2: Use App Engine Flexible with a custom container and retrieve secrets during startup.
 
-### Deployed Endpoints
-    App Engine
-    https://workspace-prod-511311.el.r.appspot.com/api/v1/weather/langgraph?city=delhi
+This is different from the native Cloud Run pattern where secret values can be mapped directly as environment variables.
 
-    Changes on health route
-    https://workspace-prod-511311.el.r.appspot.com/api/v1/health
+## 10. Debugging on GCP
 
-    Cloud Run
-    https://app-ai-python-weather-513793705540.asia-south2.run.app/
+Use:
 
+- Logs Explorer
+- Cloud Run service logs
+- App Engine logs
 
-## Diff App Engine vs Cloud Run vs GKE for your weather agent
+to inspect startup failures, secret access errors, runtime exceptions, and deployment warnings.
 
-| Capability                | App Engine Standard    | Cloud Run                           | GKE                            |
-| ------------------------- | ---------------------- | ----------------------------------- | ------------------------------ |
-| Infrastructure management | Minimal                | Minimal                             | More operational work          |
-| Custom Docker image       | No                     | Yes                                 | Yes                            |
-| Kubernetes control        | No                     | No                                  | Yes                            |
-| Autoscaling               | Yes                    | Yes                                 | Configurable                   |
-| Best fit                  | Managed Python web API | Containerized FastAPI and AI agents | Complex multi-service platform |
+## 11. Deployed endpoints
+
+### App Engine
+
+```text
+https://workspace-prod-511311.el.r.appspot.com/api/v1/weather/langgraph?city=delhi
+https://workspace-prod-511311.el.r.appspot.com/api/v1/health
+```
+
+### Cloud Run
+
+```text
+https://app-ai-python-weather-513793705540.asia-south2.run.app/
+```
+
+## 12. App Engine vs Cloud Run vs GKE
+
+| Capability | App Engine Standard | Cloud Run | GKE |
+| --- | --- | --- | --- |
+| Infrastructure management | Minimal | Minimal | More operational work |
+| Custom Docker image | No | Yes | Yes |
+| Kubernetes control | No | No | Yes |
+| Autoscaling | Yes | Yes | Configurable |
+| Best fit | Managed Python web API | Containerized FastAPI and AI agents | Complex multi-service platform |
