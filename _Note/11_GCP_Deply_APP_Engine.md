@@ -4,7 +4,7 @@
 
 ```bash
 gcloud auth login
-gcloud config set project workspace-prod-511311
+gcloud config set project python-workspace-511515
 gcloud config get-value project
 ```
 
@@ -36,24 +36,37 @@ gcloud app create --region=asia-south1
 
 From the root directory of `ai-python-weather-agent`, run:
 
-```bash
-gcloud app deploy -v=v01
-```
-
-Example output:
 
 ```bash
+$ gcloud app deploy -v=v01
 Services to deploy:
 
-  descriptor:                  [/home/local/ai-python-weather-agent/app.yaml]
-  source:                      [/home/local/ai-python-weather-agent]
-  target project:              [workspace-prod-511311]
-  target service:              [default]
-  target version:              [v01]
-  target url:                  [https://workspace-prod-511311.el.r.appspot.com]
-  target service account:      [service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com]
+descriptor:                  [/home/local/ai-python-weather-agent/app.yaml]
+source:                      [/home/local/ai-python-weather-agent]
+target project:              [python-workspace-511515]
+target service:              [default]
+target version:              [v01]
+target url:                  [https://python-workspace-511515.el.r.appspot.com]
+target service account:      [service-app-engine-demo@python-workspace-511515.iam.gserviceaccount.com]
 
-Deployed service [default] to [https://workspace-prod-511311.el.r.appspot.com]
+done.                                                                                                          
+Deployed service [default] to [https://python-workspace-511515.el.r.appspot.com]
+
+You can stream logs from the command line by running:
+  $ gcloud app logs tail -s default
+
+It will create below services & storage folders
+https://console.cloud.google.com/iam-admin/iam
+Principal                                                 Name                                    Role
+python-workspace-511515@appspot.gserviceaccount.com       App Engine default service account	    Editor
+
+https://console.cloud.google.com/iam-admin/serviceaccounts
+Email                                                     Status                    python-workspace-511515@appspot.gserviceaccount.com	  Enabled                   App Engine default service 
+
+https://console.cloud.google.com/storage/browser
+staging.python-workspace-511515.appspot.com - 
+python-workspace-511515.appspot.com
+
 ```
 
 ## 5. Bucket permission issue during deployment
@@ -61,23 +74,23 @@ Deployed service [default] to [https://workspace-prod-511311.el.r.appspot.com]
 If you see an error like:
 
 ```bash
-invalid bucket "staging.workspace-prod-511311.appspot.com";
-service account service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com does not have access to the bucket
+invalid bucket "staging.python-workspace-511515.appspot.com";
+service account service-app-engine-demo@python-workspace-511515.iam.gserviceaccount.com does not have access to the bucket
 ```
 
 Grant the required storage permission:
 
 ```bash
 gcloud storage buckets add-iam-policy-binding \
-  gs://staging.workspace-prod-511311.appspot.com \
-  --member="serviceAccount:service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com" \
+  gs://staging.python-workspace-511515.appspot.com \
+  --member="serviceAccount:service-app-engine-demo@python-workspace-511515.iam.gserviceaccount.com" \
   --role="roles/storage.admin"
 ```
 
 You can verify the service account and roles in the Google Cloud Console:
 
 - IAM & Admin > IAM
-- Service account: `service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com`
+- Service account: `service-app-engine-demo@python-workspace-511515.iam.gserviceaccount.com`
 
 ## 6. Artifact Registry / Logging / Secret Manager permissions
 
@@ -90,7 +103,7 @@ ERROR: failed to initialize analyzer: validating registry read access:: Permissi
 Grant the required IAM roles:
 
 ```bash
-PROJECT_ID="workspace-prod-511311"
+PROJECT_ID="python-workspace-511515"
 SERVICE_ACCOUNT="service-app-engine-demo@${PROJECT_ID}.iam.gserviceaccount.com"
 
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
@@ -131,17 +144,17 @@ echo -n "YOUR_LANGFUSE_SECRET_KEY" | gcloud secrets create LANGFUSE_SECRET_KEY -
 ### Enable Secret Manager API
 
 ```bash
-gcloud services enable secretmanager.googleapis.com --project=workspace-prod-511311
+gcloud services enable secretmanager.googleapis.com --project=python-workspace-511515
 ```
 
 ### Grant access to the App Engine runtime service account
 
 ```bash
-PROJECT_ID="workspace-prod-511311"
+PROJECT_ID="python-workspace-511515"
 RUNTIME_SA="service-app-engine-demo@${PROJECT_ID}.iam.gserviceaccount.com"
 
 gcloud secrets add-iam-policy-binding OPENAI_API_KEY \
-  --project=workspace-prod-511311 \
+  --project=python-workspace-511515 \
   --member="serviceAccount:${RUNTIME_SA}" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -155,7 +168,7 @@ runtime: python311
 
 entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
-service_account: service-app-engine-demo@workspace-prod-511311.iam.gserviceaccount.com
+service_account: service-app-engine-demo@python-workspace-511515.iam.gserviceaccount.com
 
 instance_class: F2
 
@@ -168,7 +181,7 @@ automatic_scaling:
 env_variables:
   ENVIRONMENT: "production"
   REDIS_ENABLED: "false"
-  GOOGLE_CLOUD_PROJECT: "workspace-prod-511311"
+  GOOGLE_CLOUD_PROJECT: "python-workspace-511515"
   DEPLOY_TYPE: "app-engine"
 ```
 
@@ -198,8 +211,8 @@ to inspect startup failures, secret access errors, runtime exceptions, and deplo
 ### App Engine
 
 ```text
-https://workspace-prod-511311.el.r.appspot.com/api/v1/weather/langgraph?city=delhi
-https://workspace-prod-511311.el.r.appspot.com/api/v1/health
+https://python-workspace-511515.el.r.appspot.com/api/v1/weather/langgraph?city=delhi
+https://python-workspace-511515.el.r.appspot.com/api/v1/health
 ```
 
 ### Cloud Run
