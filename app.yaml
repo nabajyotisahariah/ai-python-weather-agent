@@ -18,8 +18,6 @@ runtime: python311
 
 entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
-service_account: python-workspace-prod@appspot.gserviceaccount.com
-
 instance_class: F2
 
 automatic_scaling:
@@ -31,6 +29,6 @@ automatic_scaling:
 env_variables:
   ENVIRONMENT: "production"
   REDIS_ENABLED: "false"
-  GOOGLE_CLOUD_PROJECT: "python-workspace-prod"
+  GOOGLE_CLOUD_PROJECT: "weather-project-prod-511603"
   DEPLOY_TYPE: "app-engine"
 
