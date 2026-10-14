@@ -14,6 +14,7 @@ def build_weather_forecast_crew(city: str, days: int = 7) -> Crew:
         """,
         tools=[get_weather_forecast],
         verbose=True,
+        max_iter=1,
     )
     forecast_task = Task(
         description=f"""

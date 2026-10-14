@@ -89,7 +89,7 @@ async def search_faq(query: str) -> str:
         embeddings = OpenAIEmbeddings(
             model="text-embedding-3-small",
             openai_api_key=settings.openai_api_key,
-            http_client=httpx.Client()
+            http_client=httpx.Client(timeout=settings.weather_timeout_seconds)
         )
 
         # 2. Load FAISS knowledge base
@@ -135,7 +135,7 @@ async def search_faq(query: str) -> str:
             model="gpt-4o-mini",
             temperature=0,
             openai_api_key=settings.openai_api_key,
-            http_async_client=httpx.AsyncClient()
+            http_async_client=httpx.AsyncClient(timeout=settings.weather_timeout_seconds)
         )
 
         prompt = f"""

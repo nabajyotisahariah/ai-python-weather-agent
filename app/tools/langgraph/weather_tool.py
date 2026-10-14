@@ -9,7 +9,7 @@ async def get_weather(city: str) -> str:
     city = city.strip()
     url = f"{settings.weather_api_url.rstrip('/')}/{quote(city, safe='')}"
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=settings.weather_timeout_seconds) as client:
         response = await client.get(
             url,
             params={"format": "j1"},

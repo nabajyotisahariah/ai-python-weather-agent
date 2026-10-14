@@ -12,6 +12,7 @@ def build_faq_crew(question: str) -> Crew:
         """,
         tools=[search_faq],
         verbose=True,
+        max_iter=1,
     )
     faq_task = Task(
         description=f"""
