@@ -3,8 +3,8 @@
 FastAPI service for current weather data and AI-generated weather summaries. Weather data is retrieved from [wttr.in](https://wttr.in), while summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
 > **🚀 New Feature: GCP Cloud Run & App Engine Deployment**
-> - Application deployment via GCP Cloud Run ([_Notes/10_GCP_Deploy_Cloud_Run.md](_Notes/10_GCP_Deploy_Cloud_Run.md))
-> - Application deployment via GCP App Engine ([_Notes/11_GCP_Deply_APP_Engine.md](_Notes/11_GCP_Deply_APP_Engine.md))
+> - Application deployment via GCP Cloud Run ([_Note/10_GCP_Deploy_Cloud_Run.md](_Note/10_GCP_Deploy_Cloud_Run.md))
+> - Application deployment via GCP App Engine ([_Note/11_GCP_Deply_APP_Engine.md](_Note/11_GCP_Deply_APP_Engine.md))
 
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
