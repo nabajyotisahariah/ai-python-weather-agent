@@ -86,16 +86,6 @@ Required settings:
 - `REDIS_URL` is only required when `REDIS_ENABLED=true` and Redis is running remotely.
 - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are optional; they enable Langfuse telemetry when both are present.
 
-Production configuration for GCP App Engine:
-
-```powershell
-ENVIRONMENT=production
-GOOGLE_CLOUD_PROJECT=your-gcp-project-id
-DEPLOY_TYPE=app-engine
-uvicorn app.main:app
-```
-
-When `ENVIRONMENT=production`, `GOOGLE_CLOUD_PROJECT` is set, and `DEPLOY_TYPE=app-engine`, the application loads the required secrets from Google Secret Manager. For Kubernetes or Cloud Run, the secrets are typically injected as environment variables instead.
 
 ### Langfuse observability
 

@@ -24,7 +24,7 @@ def search_faq(query: str) -> str:
         # 1. Create embeddings
         embeddings = OpenAIEmbeddings(
             model="text-embedding-3-small",
-            openai_api_key=settings.openai_api_key, http_client=httpx.Client()
+            openai_api_key=settings.openai_api_key, http_client=httpx.Client(timeout=settings.weather_timeout_seconds)
         )
 
         # 2. Load FAISS knowledge base
@@ -56,7 +56,7 @@ def search_faq(query: str) -> str:
         llm = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0,
-            openai_api_key=settings.openai_api_key, http_client=httpx.Client()
+            openai_api_key=settings.openai_api_key, http_client=httpx.Client(timeout=settings.weather_timeout_seconds)
         )
 
         prompt = f"""
@@ -102,7 +102,7 @@ def search_faq_v2(query: str) -> str:
         # 1. Create embeddings
         embeddings = OpenAIEmbeddings(
             model="text-embedding-3-small",
-            openai_api_key=settings.openai_api_key, http_client=httpx.Client()
+            openai_api_key=settings.openai_api_key, http_client=httpx.Client(timeout=settings.weather_timeout_seconds)
         )
 
         # 2. Load FAISS knowledge base
@@ -146,7 +146,7 @@ def search_faq_v2(query: str) -> str:
         llm = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0,
-            openai_api_key=settings.openai_api_key, http_client=httpx.Client()
+            openai_api_key=settings.openai_api_key, http_client=httpx.Client(timeout=settings.weather_timeout_seconds)
         )
 
         prompt = f"""

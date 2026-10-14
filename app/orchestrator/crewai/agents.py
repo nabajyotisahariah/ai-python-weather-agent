@@ -30,4 +30,5 @@ def create_weather_orchestrator() -> Agent:
         ],
         verbose=True,
         allow_delegation=False,
+        max_iter=1,
     )

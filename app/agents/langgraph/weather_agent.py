@@ -47,7 +47,7 @@ async def run_weather_agent(city: str) -> str:
     logger.info("Running LangGraph weather agent for city: %s", city)
     
     # Provide an explicit client and gracefully clean it up avoiding thread pool closure leaks
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=settings.weather_timeout_seconds) as client:
         llm = ChatOpenAI(
             api_key=settings.openai_api_key, 
             model=settings.openai_api_model, 

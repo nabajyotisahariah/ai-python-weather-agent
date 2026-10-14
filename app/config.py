@@ -69,7 +69,7 @@ class Settings(BaseSettings):
 
     # Weather
     weather_api_url: str = "https://wttr.in"
-    weather_timeout_seconds: float = 10.0
+    weather_timeout_seconds: float = 6.0
 
     # Redis
     redis_enabled: bool = False
