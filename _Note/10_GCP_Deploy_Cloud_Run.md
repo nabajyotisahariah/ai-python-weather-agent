@@ -1,5 +1,7 @@
 
-### Step 1 — Prepare the Python Service for Cloud Run Deployment
+# Google Cloud Run Deployment Notes
+
+### Step 1 — Prepare the Python Codebase
 ```bash
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
@@ -67,7 +69,7 @@ tests/                   # API and service tests
     $ gcloud config get-value project
     project-workspace-511112
     ```
-5. Delete a project
+5. Delete a project (Only for reference, don't use it)
   ```bash
   gcloud projects delete python-project-1st-sep
   ```
@@ -78,10 +80,10 @@ tests/                   # API and service tests
 #asia-south2-docker.pkg.dev/project-workspace-511112/artifact-ai-python-weather-agent
 export PROJECT_ID=$(gcloud config get-value project)
 export REGION=asia-south2
-export SERVICE=app4-ai-python-weather
-export SERVICE_ACCOUNT=service4-ai-python-weather
-export REPOSITORY=artifact4-ai-python-weather-agent
-export IMAGE=ai4-python-weather-agent
+export SERVICE=app-ai-python-weather
+export SERVICE_ACCOUNT=service-ai-python-weather
+export REPOSITORY=artifact-ai-python-weather-agent
+export IMAGE=ai-python-weather-agent
 export TAG=1.1
 
 Note: 

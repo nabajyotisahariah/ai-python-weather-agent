@@ -1,0 +1,34 @@
+# Configuration for Google App Engine deployment.
+
+# Standard Environment:
+#   - Runs applications in a sandboxed, managed runtime environment.
+#   - Supports automatic scaling and managed platform services.
+#   - Can be cost-effective for lightweight applications and supports scaling to zero.
+#   - Does not require a Dockerfile for a standard runtime deployment.
+
+# Flexible Environment:
+#   - Runs applications in Docker containers on Google Compute Engine VMs.
+#   - Supports custom runtimes and greater control over the runtime environment.
+#   - Offers more flexibility but generally has higher baseline infrastructure costs.
+
+#gcloud app deploy  -v=v01
+
+
+runtime: python311
+
+entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+instance_class: F2
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1
+  target_cpu_utilization: 0.65
+  max_concurrent_requests: 1
+
+env_variables:
+  ENVIRONMENT: "production"
+  REDIS_ENABLED: "false"
+  GOOGLE_CLOUD_PROJECT: "weather-project-prod-511603"
+  DEPLOY_TYPE: "app-engine"
+
