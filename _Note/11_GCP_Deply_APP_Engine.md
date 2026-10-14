@@ -205,8 +205,22 @@ This is different from the native Cloud Run pattern where secret values can be m
 
  App Engine
   ```text
-  https://weather-project-prod-511603.el.r.appspot.com/api/v1/weather/langgraph?city=delhi
+  
   https://weather-project-prod-511603.el.r.appspot.com/api/v1/health
+  {"status":"ok"}
+
+  https://weather-project-prod-511603.el.r.appspot.com/api/v1/weather/langgraph?city=what is the weather of delhi
+  {"status":"success","message":"The current weather in Delhi is as follows:\n- **Temperature:** 28°C\n- **Feels Like:** 28°C\n- **Humidity:** 53%\n- **Weather Condition:** Smoky haze\n- **Wind Speed:** 9 km/h","isCached":false}
+
+
+  curl --location 'https://weather-project-prod-511603.el.r.appspot.com/api/v1/weather/agent' \
+--header 'Content-Type: application/json' \
+--data '{"query": "What is the current weather in Delhi, and what is the forecast for the upcoming days?"}'
+  {
+    "status": "success",
+    "message": "The current weather in Delhi is as follows:\n- Temperature: 28°C\n- Feels-like Temperature: 28°C\n- Humidity: 53%\n- Weather Condition: Smoky haze\n- Wind Speed: 9 km/h\n\nHere is the weather forecast report for Delhi for the upcoming days:\n- Date: 14th October 2026, Max Temp: 34°C, Min Temp: 26°C, Weather Condition: Sunny\n- Date: 15th October 2026, Max Temp: 35°C, Min Temp: 26°C, Weather Condition: Cloudy\n- Date: 16th October 2026, Max Temp: 33°C, Min Temp: 25°C, Weather Condition: Sunny\n\nThis provides you with the current weather and the forecast for the next three days in Delhi.",
+    "isCached": false
+}
   ```
 
    Cloud Run
@@ -214,7 +228,12 @@ This is different from the native Cloud Run pattern where secret values can be m
     https://app-ai-python-weather-513793705540.asia-south2.run.app/
   ```
 
-## 14. App Engine vs Cloud Run vs GKE
+### 14. Traffic Control using 'ingress setting'
+    Allow All Traffic
+    Allow internal traffic and traffic from Cloud Load Balancing
+    Allow internal traffic only
+
+## 15. App Engine vs Cloud Run vs GKE
 
 | Capability | App Engine Standard | Cloud Run | GKE |
 | --- | --- | --- | --- |
