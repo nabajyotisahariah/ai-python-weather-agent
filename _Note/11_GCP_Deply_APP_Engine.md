@@ -1,6 +1,31 @@
 # Google App Engine Deployment Notes
 
-### 1. Configure the Google Cloud project
+### Step 1 — Prepare the Python Codebase
+```bash
+app/
+├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
+├── orchestrator/        # CrewAI multi-agent orchestrator
+├── route/               # FastAPI route handlers
+├── schema/              # Pydantic request and response models
+├── services/            # Weather service and service interface
+├── tools/               # Agent weather tools
+├── config.py            # Environment-backed settings
+├── main.py              # FastAPI application
+├── weather-mcp.py       # FastMCP server configuration
+└── utils/               # Logging and Redis cache helpers
+data/                    # Data directory for vector DB, FAQ documents, and prompts
+script/                  # Helper and test scripts (e.g., FAISS index builder)
+helm-config/             # Kubernetes Helm chart for Application
+helm-mcp/                # Kubernetes Helm chart for FastMCP
+tests/                   # API and service tests
+```
+
+### Step 2: Prerequisites
+```bash
+1. Install Docker and Docker Compose.
+```
+
+### Step 3. Configure the Google Cloud project
 
 ```bash
 gcloud auth login
@@ -16,14 +41,12 @@ Configuration requirement:
   - GOOGLE_CLOUD_PROJECT — the target GCP project ID used by the application, including Secret Manager access.
 ```
 
-### 2. Configure `app.yaml`
+### 4. Configure `app.yaml`
 
 ```yaml
 runtime: python311
 
 entrypoint: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-
-#service_account: python-workspace-prod@appspot.gserviceaccount.com
 
 instance_class: F2
 
@@ -40,7 +63,7 @@ env_variables:
   DEPLOY_TYPE: "app-engine"
 ```
 
-## 3. Enable required APIs
+## 5. Enable required APIs
 
 ```bash
 gcloud services enable \
@@ -50,7 +73,7 @@ gcloud services enable \
   secretmanager.googleapis.com
 ```
 
-## 4. Check whether App Engine is already initialized:
+## 6. Check whether App Engine is already initialized:
 
 ```bash
 gcloud app describe
@@ -58,7 +81,7 @@ gcloud app describe
 ERROR: (gcloud.app.describe) The current Google Cloud project [python-workspace-prod] does not contain an App Engine application. Use `gcloud app create` to initialize an App Engine application within the project
 ```
 
-## 5. Create the App Engine application
+## 7. Create the App Engine application
 
 ```bash
 gcloud app create --region=asia-south1
@@ -74,13 +97,14 @@ Service accounts [https://console.cloud.google.com/iam-admin/serviceaccounts]
 Email                                                        Status                Name
  weather-project-prod-511603@appspot.gserviceaccount.com	    Enabled         App Engine default service account	
 ```
-## 6. Deploy the application
+## 8. Deploy the application
 
 From the root directory of `ai-python-weather-agent`, run:
 
 
 ```bash
-$ gcloud app deploy -v=v01descriptor:                  [/home/nabajyotisahariah009/ai-python-weather-agent/app.yaml]
+$ gcloud app deploy -v=v01
+descriptor:                  [/home/nabajyotisahariah009/ai-python-weather-agent/app.yaml]
 source:                      [/home/nabajyotisahariah009/ai-python-weather-agent]
 target project:              [weather-project-prod-511603]
 target service:              [default]
@@ -108,20 +132,22 @@ weather-project-prod-511603.appspot.com
 
 ```
 
-### 7 Application logs
+### 9. Application logs
+    
+  ```bash
     Cloud Build 
           History 
               https://console.cloud.google.com/cloud-build/builds
 
     Logs Explorer
           https://console.cloud.google.com/logs/query
+  ```
 
-
-### 8 Debugging Application Failure on 'Logs Explorer'
+### 10. Debugging Application Failure on 'Logs Explorer'
 
   1. Bucket permission issue during deployment
     Grant the required storage permission:
-    ```bash
+  ```bash
   gcloud storage buckets add-iam-policy-binding \
   gs://staging.weather-project-prod-511603.appspot.com \
   --member="weather-project-prod-511603@appspot.gserviceaccount.com" \
@@ -133,7 +159,7 @@ weather-project-prod-511603.appspot.com
 
   3. ERROR: failed to initialize analyzer: validating registry read access:: Permission 'artifactregistry.repositories.downloadArtifacts'
 
-## 9. Artifact Registry / Logging / Secret Manager permissions
+### 11. Artifact Registry / Logging / Secret Manager permissions
 
 > Grant the required IAM roles:
 
@@ -179,7 +205,7 @@ https://console.cloud.google.com/iam-admin/iam
 
 > In App Engine, this service account is configured under: App Engine > Dashboard > Settings > Application Settings > Default service account
 
-## 10. Add secrets to Secret Manager
+### 12. Add secrets to Secret Manager
 
 ### Create secrets & update the keys version wise from the GCP Console UI 
 
@@ -190,7 +216,7 @@ echo -n "YOUR_LANGFUSE_PUBLIC_KEY" | gcloud secrets create LANGFUSE_PUBLIC_KEY -
 echo -n "YOUR_LANGFUSE_SECRET_KEY" | gcloud secrets create LANGFUSE_SECRET_KEY --data-file=-
 ```
 
-## 12. Application changes required
+### 13. Application changes required
 
 App Engine Standard does not support the same `--set-secrets` mapping flow used by Cloud Run.
 
@@ -201,7 +227,7 @@ For the weather agent on App Engine, the practical options are:
 
 This is different from the native Cloud Run pattern where secret values can be mapped directly as environment variables.
 
-## 13. Deployed endpoints
+### 14. Deployed endpoints
 
  App Engine
   ```text
@@ -228,12 +254,14 @@ This is different from the native Cloud Run pattern where secret values can be m
     https://app-ai-python-weather-513793705540.asia-south2.run.app/
   ```
 
-### 14. Traffic Control using 'ingress setting'
+### 15. Traffic Control using 'ingress setting'
+```bash
     Allow All Traffic
     Allow internal traffic and traffic from Cloud Load Balancing
     Allow internal traffic only
+```
 
-## 15. App Engine vs Cloud Run vs GKE
+## 16. App Engine vs Cloud Run vs GKE
 
 | Capability | App Engine Standard | Cloud Run | GKE |
 | --- | --- | --- | --- |
