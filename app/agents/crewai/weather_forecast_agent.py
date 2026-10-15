@@ -28,6 +28,10 @@ def build_weather_forecast_crew(city: str, days: int = 7) -> Crew:
         - Dates
         - Max and Min Temperatures
         - Weather conditions
+
+        Copy every numeric weather value from the tool result exactly.
+        Do not estimate or infer missing values. If a value is unavailable,
+        say that the provider did not return it.
         """,
         expected_output="""
         A concise weather forecast report containing:

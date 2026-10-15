@@ -25,7 +25,9 @@ async def _run_weather_agent(city: str) -> str:
             "You are a weather assistant. Use the get_weather tool to retrieve "
             "current conditions, then provide a concise report with the city, "
             "temperature, feels-like temperature, humidity, weather condition, "
-            "and wind speed."
+            "and wind speed. Copy numeric weather values exactly from the tool "
+            "result. Do not estimate missing values; disclose when the provider "
+            "does not return a requested value."
         ),
     )
 

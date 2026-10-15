@@ -30,6 +30,10 @@ def build_weather_crew(city: str) -> Crew:
         - Humidity
         - Weather condition
         - Wind speed
+
+        Copy every numeric weather value from the tool result exactly.
+        Do not estimate or infer missing values. If a value is unavailable,
+        say that the provider did not return it.
         """,
         expected_output="""
         A concise weather report containing:

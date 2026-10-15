@@ -18,6 +18,8 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Redis caching for weather data and generated reports
 - Health-check endpoint
 - Pydantic request and response validation (null fields are excluded from JSON responses)
+- Provider-backed output guardrails for current weather and forecast reports, including explicit missing-field disclosures
+- AI-generated weather numbers are checked against provider data before responses are cached or returned
 - LLM-bound user input is trimmed and limited to 1,000 characters
 - CORS support for API clients
 - Security headers for HTTP responses
@@ -175,6 +177,17 @@ Run the complete test suite from the project root:
 ```powershell
 python -m pytest tests/ -v
 ```
+
+## Output guardrails
+
+Current conditions and forecast rows are validated against Pydantic models.
+Unavailable provider fields are returned in each weather record's
+`unavailable_fields` list rather than being filled with guessed values.
+Generated current-weather and CrewAI forecast reports include the underlying
+provider data, and numeric weather claims that do not match that data are
+rejected before caching or returning the report. Responses also enforce the
+application's output schema, message-size limit, and credential-like content
+policy.
 
 
 The project pins AutoGen `0.7.5` and Langfuse `4.15.6` in `requirements.txt`.

@@ -58,7 +58,17 @@ async def run_weather_agent(city: str) -> str:
         )
         graph = _build_graph(llm)
         result = await graph.ainvoke(
-            {"messages": [HumanMessage(content=f"What is the weather in {city}?")]}
+            {
+                "messages": [
+                    HumanMessage(
+                        content=(
+                            f"What is the weather in {city}? Use the weather tool, "
+                            "copy numeric values exactly, and disclose any unavailable "
+                            "provider fields instead of guessing."
+                        )
+                    )
+                ]
+            }
         )
         
     logger.info("LangGraph weather agent completed for city: %s", city)
