@@ -9,6 +9,7 @@ import logging
 
 from app.schema.weather import AgentResponse
 from app.utils.redis_cache import AsyncRedisCache
+from app.guardrails.input_guardrails import validate_query
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +41,7 @@ class WeatherAgentService(WeatherAgentInterface):
 
     async def process_weather_query(self, query: str) -> AgentResponse:
         """Process a natural language weather query using the CrewAI agent."""
-       
-        query_str = query.strip()
+        query_str = validate_query(query)
         logger.info("Executing process_weather_query with query: %s", query_str)
         
         # Check cache

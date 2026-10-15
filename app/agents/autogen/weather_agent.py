@@ -5,12 +5,14 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from app.config import settings
+from app.guardrails.input_guardrails import validate_query
 from app.tools.autogen.weather_tool import get_weather
 
 logger = logging.getLogger(__name__)
 
 
 async def _run_weather_agent(city: str) -> str:
+    city = validate_query(city)
     model_client = OpenAIChatCompletionClient(
         model=settings.openai_api_model,
         api_key=settings.openai_api_key,

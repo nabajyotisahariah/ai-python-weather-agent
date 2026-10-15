@@ -18,6 +18,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Redis caching for weather data and generated reports
 - Health-check endpoint
 - Pydantic request and response validation (null fields are excluded from JSON responses)
+- LLM-bound user input is trimmed and limited to 1,000 characters
 - CORS support for API clients
 - Security headers for HTTP responses
 - Structured logging and provider error handling

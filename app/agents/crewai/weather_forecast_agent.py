@@ -1,9 +1,11 @@
 from crewai import Agent, Crew, Process, Task
 
+from app.guardrails.input_guardrails import validate_query
 from app.tools.crewai.weather_forecast_tool import get_weather_forecast
 
 
 def build_weather_forecast_crew(city: str, days: int = 7) -> Crew:
+    city = validate_query(city)
     forecast_agent = Agent(
         role="Weather Forecast Assistant",
         goal="Provide accurate and easy-to-understand weather forecast information",

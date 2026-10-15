@@ -9,6 +9,7 @@ from langchain_community.vectorstores import FAISS
 from app.services.weather_service import WeatherService
 from app.services.weather_forecast_service import WeatherForecastService
 from app.config import settings
+from app.guardrails.input_guardrails import validate_query
 from app.schema.weather import AgentResponse
 from app.utils.redis_cache import AsyncRedisCache
 
@@ -76,6 +77,7 @@ async def search_faq(query: str) -> str:
     Returns:
         A concise answer based on the FAQ content.
     """
+    query = validate_query(query)
     logger.info(f">>>> SEARCH FAQ CALLED WITH query={query}")
 
     cache_key = f"weather:faq:{query.strip().casefold()}"
@@ -170,5 +172,4 @@ FAQ Context:
     except Exception as e:
         logger.error(f"Error searching FAQ: {e}", exc_info=True)
         return f"Error searching FAQ knowledge base: {e}"
-
 

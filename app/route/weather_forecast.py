@@ -7,6 +7,7 @@ from app.services.weather_service import (
 from app.services.interface.weather_forecast_interface import WeatherForecastInterface
 from app.services.weather_forecast_service import WeatherForecastService
 from app.schema.weather import AgentResponse, WeatherRequest, WeatherResponse
+from app.guardrails.input_guardrails import GuardrailViolation, validate_query
 import logging
 
 router = APIRouter()
@@ -55,8 +56,13 @@ async def get_crewai_weather_route(
             content={"status": "fail", "message": "City name cannot be empty."}
         )
     try:
-        logger.info("Fetching CrewAI weather report for city: %s", request.city.strip())
-        return await service.get_weather_forecast_crewai(request.city.strip())
+        city = validate_query(request.city)
+    except GuardrailViolation as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        logger.info("Fetching CrewAI weather report for city: %s", city)
+        return await service.get_weather_forecast_crewai(city)
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:

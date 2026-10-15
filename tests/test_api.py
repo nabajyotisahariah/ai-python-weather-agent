@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Iterator
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -360,7 +360,17 @@ def test_unexpected_exception_uses_application_handler() -> None:
 
 def test_weather_agent_returns_agent_response(client: TestClient) -> None:
     # Just mock the run_weather_orchestrator for the test
-    with patch("app.services.weather_agent_service.run_weather_orchestrator") as mock_run:
+    with (
+        patch(
+            "app.route.weather_agent.weather_agent_service._get_cached_report",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "app.route.weather_agent.weather_agent_service._cache_report",
+            new=AsyncMock(),
+        ),
+        patch("app.services.weather_agent_service.run_weather_orchestrator") as mock_run,
+    ):
         async def async_mock(*args, **kwargs):
             return "Mocked CrewAI Response"
             
@@ -373,3 +383,33 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
             "message": "Mocked CrewAI Response",
             "isCached": False,
         }
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "kwargs"),
+    [
+        ("get", "/api/v1/weather/crewai", {"params": {"city": "x" * 1001}}),
+        ("get", "/api/v1/weather/langgraph", {"params": {"city": "x" * 1001}}),
+        ("get", "/api/v1/weather/autogen", {"params": {"city": "x" * 1001}}),
+        (
+            "get",
+            "/api/v1/weather/forecast/crewai",
+            {"params": {"city": "x" * 1001}},
+        ),
+        (
+            "post",
+            "/api/v1/weather/agent",
+            {"json": {"query": "x" * 1001}},
+        ),
+    ],
+)
+def test_llm_routes_reject_queries_over_maximum_length(
+    client: TestClient,
+    method: str,
+    path: str,
+    kwargs: dict[str, object],
+) -> None:
+    response = getattr(client, method)(path, **kwargs)
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Query exceeds the allowed length"}

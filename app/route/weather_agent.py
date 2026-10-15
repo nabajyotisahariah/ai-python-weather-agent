@@ -7,6 +7,7 @@ from app.services.weather_service import (
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.services.weather_agent_service import WeatherAgentService
 from app.schema.weather import AgentResponse, WeatherRequest
+from app.guardrails.input_guardrails import GuardrailViolation, validate_query
 import logging
 
 router = APIRouter()
@@ -31,8 +32,13 @@ async def post_weather_forecast_route(
             content={"status": "fail", "message": "City name cannot be empty."}
         )
     try:
-        logger.info("Fetching current weather for city (POST): %s", query_val.strip())
-        return await service.process_weather_query(query_val.strip())
+        query_val = validate_query(query_val)
+    except GuardrailViolation as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        logger.info("Fetching current weather for city (POST): %s", query_val)
+        return await service.process_weather_query(query_val)
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError as exc:

@@ -13,6 +13,7 @@ from app.config import settings
 from app.schema.weather import AgentResponse
 from app.utils.redis_cache import AsyncRedisCache
 from app.utils.langfuse_observability import observe_operation, update_observation
+from app.guardrails.input_guardrails import validate_query
 import logging
 
 logger = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ class WeatherForecastService(WeatherForecastInterface):
 
     async def get_weather_forecast_crewai(self, city: str) -> AgentResponse:
         """Run the CrewAI weather forecast agent without blocking the API event loop."""
-        city = city.strip()
+        city = validate_query(city)
         cached_report = await self._get_cached_report("crewai-forecast", city)
         if cached_report:
             return cached_report

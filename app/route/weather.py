@@ -7,6 +7,7 @@ from app.services.weather_service import (
 from app.services.interface.weather_interface import WeatherServiceInterface
 from app.services.weather_service import WeatherService
 from app.schema.weather import AgentResponse, WeatherRequest, WeatherResponse
+from app.guardrails.input_guardrails import GuardrailViolation, validate_query
 import logging
 
 router = APIRouter()
@@ -56,8 +57,13 @@ async def get_crewai_weather_route(
             content={"status": "fail", "message": "City name cannot be empty."}
         )
     try:
-        logger.info("Fetching CrewAI weather report for city: %s", request.city.strip())
-        return await service.get_crewai_weather_report(request.city.strip())
+        city = validate_query(request.city)
+    except GuardrailViolation as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        logger.info("Fetching CrewAI weather report for city: %s", city)
+        return await service.get_crewai_weather_report(city)
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
@@ -79,8 +85,13 @@ async def get_langgraph_weather_route(
             content={"status": "fail", "message": "City name cannot be empty."}
         )
     try:
-        logger.info("Fetching LangGraph weather report for city: %s", request.city.strip())
-        return await service.get_langgraph_weather_report(request.city.strip())
+        city = validate_query(request.city)
+    except GuardrailViolation as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        logger.info("Fetching LangGraph weather report for city: %s", city)
+        return await service.get_langgraph_weather_report(city)
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:
@@ -102,8 +113,13 @@ async def get_autogen_weather_route(
             content={"status": "fail", "message": "City name cannot be empty."}
         )
     try:
-        logger.info("Fetching AutoGen weather report for city: %s", request.city.strip())
-        return await service.get_autogen_weather_report(request.city.strip())
+        city = validate_query(request.city)
+    except GuardrailViolation as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        logger.info("Fetching AutoGen weather report for city: %s", city)
+        return await service.get_autogen_weather_report(city)
     except CityNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WeatherProviderError:

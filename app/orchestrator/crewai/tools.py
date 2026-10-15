@@ -4,10 +4,12 @@ from crewai import Crew
 from crewai.tools import tool
 
 from app.agents.crewai import build_weather_crew, build_weather_forecast_crew, build_faq_crew
+from app.guardrails.input_guardrails import validate_query
 
 logger = logging.getLogger(__name__)
 
 def run_weather_agent(city: str) -> str:
+    city = validate_query(city)
     weather_crew: Crew = build_weather_crew(city)
     result = weather_crew.kickoff(
         inputs={"city": city},
@@ -16,6 +18,7 @@ def run_weather_agent(city: str) -> str:
     return result.raw
 
 def run_forecast_agent(city: str, days: int = 7) -> str:
+    city = validate_query(city)
     weather_crew: Crew = build_weather_forecast_crew(city, days)
     result = weather_crew.kickoff(
         inputs={"city": city},
@@ -23,6 +26,7 @@ def run_forecast_agent(city: str, days: int = 7) -> str:
     return result.raw
 
 def run_faq_agent(question: str) -> str:
+    question = validate_query(question)
     faq_crew: Crew = build_faq_crew(question)
     result = faq_crew.kickoff(
         inputs={"question": question},
