@@ -8,11 +8,13 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.route.weather import get_weather_service
 from app.route.weather_forecast import get_weather_forecast_service
+from app.schema.weather import AgentResponse
 from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
     WeatherService,
 )
+from app.services.weather_agent_service import WeatherAgentService
 
 
 class StubWeatherService:
@@ -385,7 +387,84 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
             "status": "success",
             "message": "Mocked CrewAI Response",
             "isCached": False,
+            "cacheKey": "weather:agent:crewai:delhi",
         }
+
+
+def test_weather_langgraph_agent_returns_agent_response(client: TestClient) -> None:
+    with (
+        patch(
+            "app.route.weather_agent.weather_agent_service._get_cached_report",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "app.route.weather_agent.weather_agent_service._cache_report",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.services.weather_agent_service.run_weather_orchestrator_langgraph",
+            new=AsyncMock(
+                return_value=(
+                    "Mocked LangGraph Response",
+                    "weather:orchestrator:langgraph:delhi",
+                )
+            ),
+        ),
+    ):
+        response = client.post(
+            "/api/v1/weather/agent/langgraph",
+            json={"city": "Delhi"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "success",
+        "message": "Mocked LangGraph Response",
+        "isCached": False,
+        "cacheKey": "weather:orchestrator:langgraph:delhi",
+    }
+
+
+def test_agent_providers_use_separate_report_cache_keys() -> None:
+    async def run_test() -> None:
+        service = WeatherAgentService(redis_client=FakeRedis())
+        await service._cache_report(
+            "Delhi",
+            AgentResponse(
+                status="success",
+                message="CrewAI report",
+                isCached=False,
+                cacheKey=service._report_cache_key("Delhi", "crewai"),
+            ),
+            "crewai",
+        )
+        await service._cache_report(
+            "Delhi",
+            AgentResponse(
+                status="success",
+                message="LangGraph report",
+                isCached=False,
+                cacheKey="weather:orchestrator:langgraph:delhi",
+            ),
+            "langgraph",
+        )
+
+        crewai_report = await service._get_cached_report("Delhi", "crewai")
+        langgraph_report = await service._get_cached_report("Delhi", "langgraph")
+
+        assert crewai_report is not None
+        assert crewai_report.message == "CrewAI report"
+        assert crewai_report.isCached is True
+        assert crewai_report.cacheKey == "weather:agent:crewai:delhi"
+        assert langgraph_report is not None
+        assert langgraph_report.message == "LangGraph report"
+        assert langgraph_report.isCached is True
+        assert langgraph_report.cacheKey == "weather:orchestrator:langgraph:delhi"
+        assert service._report_cache_key("Delhi", "crewai") != (
+            service._report_cache_key("Delhi", "langgraph")
+        )
+
+    asyncio.run(run_test())
 
 
 @pytest.mark.parametrize(

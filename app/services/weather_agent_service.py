@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from redis.asyncio import Redis
 
@@ -11,6 +12,7 @@ from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.utils.redis_cache import AsyncRedisCache
 
 logger = logging.getLogger(__name__)
+AgentProvider = Literal["crewai", "langgraph"]
 
 class WeatherAgentService(WeatherAgentInterface):
 
@@ -21,22 +23,37 @@ class WeatherAgentService(WeatherAgentInterface):
         self.cache = AsyncRedisCache(redis_client)
 
     @staticmethod
-    def _report_cache_key(query: str) -> str:
-        return f"weather:agent:{query.casefold()}"
+    def _report_cache_key(query: str, provider: AgentProvider) -> str:
+        return f"weather:agent:{provider}:{query.casefold()}"
 
-    async def _get_cached_report(self, query: str) -> AgentResponse | None:
-        cached_report = await self.cache.get(self._report_cache_key(query))
+    async def _get_cached_report(
+        self,
+        query: str,
+        provider: AgentProvider,
+    ) -> AgentResponse | None:
+        cache_key = self._report_cache_key(query, provider)
+        cached_report = await self.cache.get(cache_key)
         if cached_report and "status" in cached_report and "message" in cached_report:
             return AgentResponse(
                 status=cached_report["status"],
                 message=str(cached_report["message"]),
                 data=cached_report.get("data"),
                 isCached=True,
+                cacheKey=cached_report.get("cacheKey", cache_key),
             )
         return None
 
-    async def _cache_report(self, query: str, report: AgentResponse) -> None:
-        await self.cache.set(self._report_cache_key(query), report.model_dump(), ex=3600)
+    async def _cache_report(
+        self,
+        query: str,
+        report: AgentResponse,
+        provider: AgentProvider,
+    ) -> None:
+        await self.cache.set(
+            self._report_cache_key(query, provider),
+            report.model_dump(),
+            ex=3600,
+        )
 
     async def process_weather_query(self, query: str) -> AgentResponse:
         """Process a natural language weather query using the CrewAI agent."""
@@ -44,7 +61,7 @@ class WeatherAgentService(WeatherAgentInterface):
         logger.info("Executing process_weather_query with query: %s", query_str)
         
         # Check cache
-        cached_report = await self._get_cached_report(query_str)
+        cached_report = await self._get_cached_report(query_str, "crewai")
         if cached_report:
             logger.info("Cache hit for query: %s", query_str)
             return cached_report
@@ -57,11 +74,12 @@ class WeatherAgentService(WeatherAgentInterface):
             status="success",
             message=str(response),
             data=None,
-            isCached=False
+            isCached=False,
+            cacheKey=self._report_cache_key(query_str, "crewai"),
         )
         
         # Cache the new report
-        await self._cache_report(query_str, report)
+        await self._cache_report(query_str, report, "crewai")
         
         return report
 
@@ -71,23 +89,24 @@ class WeatherAgentService(WeatherAgentInterface):
         logger.info("Executing process_weather_langgraph_query with query: %s", query_str)
         
         # Check cache
-        cached_report = await self._get_cached_report(query_str)
+        cached_report = await self._get_cached_report(query_str, "langgraph")
         if cached_report:
             logger.info("Cache hit for query: %s", query_str)
             return cached_report
 
         # Call orchestrator if not cached
         logger.info("Cache miss for query: %s. Fetching from orchestrator.", query_str)
-        response = await run_weather_orchestrator_langgraph(query_str)
+        response, cache_key = await run_weather_orchestrator_langgraph(query_str)
         
         report = AgentResponse(
             status="success",
             message=str(response),
             data=None,
-            isCached=False
+            isCached=False,
+            cacheKey=cache_key,
         )
         
         # Cache the new report
-        await self._cache_report(query_str, report)
+        await self._cache_report(query_str, report, "langgraph")
         
         return report

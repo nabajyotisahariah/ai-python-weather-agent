@@ -32,7 +32,10 @@ def test_langgraph_orchestrator_returns_cached_result(
         orchestrator.run_weather_orchestrator_langgraph("Weather forecast for Delhi")
     )
 
-    assert result == "Cached forecast"
+    assert result == (
+        "Cached forecast",
+        "weather:orchestrator:langgraph:weather_forecast_for_delhi",
+    )
 
 
 def test_langgraph_orchestrator_rejects_empty_query_before_cache_access(

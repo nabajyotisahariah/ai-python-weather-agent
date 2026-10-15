@@ -44,5 +44,9 @@ class AgentResponse(BaseModel):
         strict=True,
         description="Indicates if the response was served from cache",
     )
+    cacheKey: str | None = Field(
+        default=None,
+        description="Key for caching the response",
+    )
 
 WeatherResponse = WeatherData

@@ -156,8 +156,8 @@ def _build_orchestrator_graph(llm: ChatOpenAI):
     return graph.compile()
 
 
-async def run_weather_orchestrator_langgraph(query: str) -> str:
-    """Run the LangGraph weather supervisor and its specialist agents."""
+async def run_weather_orchestrator_langgraph(query: str) -> tuple[str, str]:
+    """Run the LangGraph weather supervisor and return its response and cache key."""
     query = validate_query(query)
     cache_key = (
         f"weather:orchestrator:langgraph:"
@@ -166,7 +166,7 @@ async def run_weather_orchestrator_langgraph(query: str) -> str:
     cached_result = await redis_cache.get(cache_key)
     if cached_result and isinstance(cached_result.get("raw"), str):
         logger.info("LangGraph orchestrator cache hit for query: %s", query)
-        return cached_result["raw"]
+        return cached_result["raw"], cache_key
 
     logger.info("Executing run_weather_orchestrator_langgraph for query: %s", query)
     async with httpx.AsyncClient(
@@ -199,4 +199,4 @@ async def run_weather_orchestrator_langgraph(query: str) -> str:
 
     response = _message_text(result["messages"][-1])
     await redis_cache.set(cache_key, {"raw": response}, ex=3600)
-    return response
+    return response, cache_key
