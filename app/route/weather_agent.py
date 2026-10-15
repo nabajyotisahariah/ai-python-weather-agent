@@ -8,6 +8,7 @@ from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.services.weather_agent_service import WeatherAgentService
 from app.schema.weather import AgentResponse, WeatherRequest
 from app.guardrails.input_guardrails import GuardrailViolation, validate_query
+from app.utils.response import generic_api_response
 import logging
 
 router = APIRouter()
@@ -26,20 +27,19 @@ async def post_weather_forecast_route(
 ) -> AgentResponse:
     """Return the current weather & weather forecast for a city using a POST request."""
     query_val = request.query if request.query is not None else request.city
-    if not query_val or not query_val.strip():
-        return JSONResponse(
-            status_code=401,
-            content={"status": "fail", "message": "City name cannot be empty."}
-        )
+    
     try:
         query_val = validate_query(query_val)
-    except GuardrailViolation as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    try:
+    
         logger.info("Fetching current weather for city (POST): %s", query_val)
         return await service.process_weather_query(query_val)
+
+    except GuardrailViolation as exc:
+        #raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return generic_api_response(400, "fail", str(exc))
     except CityNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        #raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return generic_api_response(404, "fail", str(exc))
     except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        #raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return generic_api_response(502, "fail", str(exc))

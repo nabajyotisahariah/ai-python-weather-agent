@@ -8,6 +8,7 @@ from app.services.interface.weather_forecast_interface import WeatherForecastInt
 from app.services.weather_forecast_service import WeatherForecastService
 from app.schema.weather import AgentResponse, WeatherRequest, WeatherResponse
 from app.guardrails.input_guardrails import GuardrailViolation, validate_query
+from app.utils.response import generic_api_response
 import logging
 
 router = APIRouter()
@@ -64,10 +65,12 @@ async def get_crewai_weather_route(
         logger.info("Fetching CrewAI weather report for city: %s", city)
         return await service.get_weather_forecast_crewai(city)
     except CityNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        #raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return generic_api_response(404, "fail", str(exc))
     except WeatherProviderError:
         logger.warning("CrewAI weather provider failed for city: %s", request.city.strip())
-        return assistant_error_response()
+        #return assistant_error_response()
+        return generic_api_response(502, "fail", "Weather assistant unavailable")
     except Exception as exc:
         logger.exception("Unexpected CrewAI weather error for city: %s", request.city.strip())
-        return assistant_error_response()
+        return generic_api_response(500, "fail", "An unexpected error occurred")
