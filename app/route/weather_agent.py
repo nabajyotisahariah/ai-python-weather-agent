@@ -40,3 +40,25 @@ async def post_weather_forecast_route(
         return generic_api_response(404, "fail", str(exc))
     except WeatherProviderError as exc:
         return generic_api_response(502, "fail", str(exc))
+
+
+@router.post("/weather/agent/langgraph", summary="Weather Agent (POST)", description="Returns the current Weather & forecast of the API using a JSON body.", tags=["System"], response_model_exclude_none=True)
+async def post_weather_forecast_route_langgraph(
+    request: WeatherRequest,
+    service: WeatherAgentInterface = Depends(get_weather_agent_service),
+) -> AgentResponse:
+    """Return the current weather & weather forecast for a city using a POST request."""
+    query_val = request.query if request.query is not None else request.city
+    
+    try:
+        query_val = validate_query(query_val)
+    
+        logger.info("Fetching current weather for city (POST): %s", query_val)
+        return await service.process_weather_langgraph_query(query_val)
+
+    except GuardrailViolation as exc:
+        return generic_api_response(400, "fail", str(exc))
+    except CityNotFoundError as exc:
+        return generic_api_response(404, "fail", str(exc))
+    except WeatherProviderError as exc:
+        return generic_api_response(502, "fail", str(exc))
