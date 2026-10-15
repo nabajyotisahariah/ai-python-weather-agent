@@ -35,11 +35,8 @@ async def post_weather_forecast_route(
         return await service.process_weather_query(query_val)
 
     except GuardrailViolation as exc:
-        #raise HTTPException(status_code=400, detail=str(exc)) from exc
         return generic_api_response(400, "fail", str(exc))
     except CityNotFoundError as exc:
-        #raise HTTPException(status_code=404, detail=str(exc)) from exc
         return generic_api_response(404, "fail", str(exc))
     except WeatherProviderError as exc:
-        #raise HTTPException(status_code=502, detail=str(exc)) from exc
         return generic_api_response(502, "fail", str(exc))

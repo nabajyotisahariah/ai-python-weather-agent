@@ -150,7 +150,10 @@ def test_redis_health_check_returns_service_unavailable_on_timeout(
         response = client.get("/api/v1/health/redis")
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "Redis connection error."}
+    assert response.json() == {
+        "status": "fail",
+        "message": "Redis connection error.",
+    }
 
 
 def test_redis_health_check_reports_disabled_without_connecting(
@@ -257,7 +260,7 @@ def test_current_weather_maps_city_not_found_to_404() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "City not found"}
+    assert response.json() == {"status": "fail", "message": "City not found"}
 
 
 def test_autogen_weather_returns_agent_response(client: TestClient) -> None:
@@ -311,7 +314,7 @@ def test_forecast_weather_maps_city_not_found_to_404() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "City not found"}
+    assert response.json() == {"status": "fail", "message": "City not found"}
 
 
 def test_crewai_forecast_weather_returns_agent_response(client: TestClient) -> None:
@@ -386,20 +389,52 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
 
 
 @pytest.mark.parametrize(
-    ("method", "path", "kwargs"),
+    ("method", "path", "kwargs", "expected_response"),
     [
-        ("get", "/api/v1/weather/crewai", {"params": {"city": "x" * 1001}}),
-        ("get", "/api/v1/weather/langgraph", {"params": {"city": "x" * 1001}}),
-        ("get", "/api/v1/weather/autogen", {"params": {"city": "x" * 1001}}),
+        (
+            "get",
+            "/api/v1/weather/crewai",
+            {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
+        (
+            "get",
+            "/api/v1/weather/langgraph",
+            {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
+        (
+            "get",
+            "/api/v1/weather/autogen",
+            {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
         (
             "get",
             "/api/v1/weather/forecast/crewai",
             {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
         ),
         (
             "post",
             "/api/v1/weather/agent",
             {"json": {"query": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
         ),
     ],
 )
@@ -408,8 +443,59 @@ def test_llm_routes_reject_queries_over_maximum_length(
     method: str,
     path: str,
     kwargs: dict[str, object],
+    expected_response: dict[str, str],
 ) -> None:
     response = getattr(client, method)(path, **kwargs)
 
     assert response.status_code == 400
-    assert response.json() == {"detail": "Query exceeds the allowed length"}
+    assert response.json() == expected_response
+
+
+def test_request_validation_error_uses_generic_response(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/weather/agent",
+        json={"query": ["not", "a", "string"]},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "status": "fail",
+        "message": "Request validation failed",
+    }
+
+
+def test_http_error_uses_generic_response(client: TestClient) -> None:
+    response = client.get("/api/v1/does-not-exist")
+
+    assert response.status_code == 404
+    assert response.json() == {"status": "fail", "message": "Not Found"}
+
+
+@pytest.mark.parametrize(
+    ("error", "status_code", "message"),
+    [
+        (CityNotFoundError("City not found"), 404, "City not found"),
+        (
+            WeatherProviderError("Weather assistant unavailable"),
+            502,
+            "Weather assistant unavailable",
+        ),
+    ],
+)
+def test_weather_agent_returns_generic_failure_response(
+    client: TestClient,
+    error: Exception,
+    status_code: int,
+    message: str,
+) -> None:
+    with patch(
+        "app.route.weather_agent.weather_agent_service.process_weather_query",
+        new=AsyncMock(side_effect=error),
+    ):
+        response = client.post(
+            "/api/v1/weather/agent",
+            json={"query": "What is the weather in Delhi?"},
+        )
+
+    assert response.status_code == status_code
+    assert response.json() == {"status": "fail", "message": message}

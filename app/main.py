@@ -8,11 +8,14 @@ if __package__ in (None, ""):
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 import uvicorn
 from app.utils.logger import setup_logging
 from app.config import settings
 from app.route import health, weather, weather_forecast, weather_agent
+from app.utils.response import generic_api_response
 
 setup_logging()
 logging.info("Starting Weather Assistant API %s", settings.environment)
@@ -42,10 +45,25 @@ async def handle_unexpected_exception(request: Request, exc: Exception) -> JSONR
         request.url.path,
         exc_info=exc,
     )
-    return JSONResponse(
-        status_code=500,
-        content={"status": "fail", "message": "Internal server error"},
-    )
+    return generic_api_response(500, "fail", "Internal server error")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_exception(
+    request: Request,
+    exc: StarletteHTTPException,
+) -> JSONResponse:
+    """Normalize HTTP errors from all routes to the generic API response shape."""
+    return generic_api_response(exc.status_code, "fail", str(exc.detail))
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    """Return a consistent error envelope for invalid request payloads."""
+    return generic_api_response(422, "fail", "Request validation failed")
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):

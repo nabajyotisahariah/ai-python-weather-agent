@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends
 from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
@@ -20,12 +19,6 @@ def get_weather_forecast_service() -> WeatherForecastInterface:
     return weather_service
 
 
-def assistant_error_response() -> JSONResponse:
-    return JSONResponse(
-        status_code=502,
-        content={"status": "fail", "message": "Weather assistant unavailable"},
-    )
-
 @router.get("/weather/forecast", response_model_exclude_none=True)
 async def get_weather_forecast_route(
     request: WeatherRequest = Depends(),
@@ -33,17 +26,14 @@ async def get_weather_forecast_route(
 ) -> AgentResponse:
     """Return the current weather for a city."""
     if not request.city or not request.city.strip():
-        return JSONResponse(
-            status_code=401,
-            content={"status": "fail", "message": "City name cannot be empty."}
-        )
+        return generic_api_response(401, "fail", "City name cannot be empty.")
     try:
         logger.info("Fetching current weather for city: %s", request.city.strip())
         return await service.get_weather_forecast(request.city.strip())
     except CityNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return generic_api_response(404, "fail", str(exc))
     except WeatherProviderError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return generic_api_response(502, "fail", str(exc))
 
 @router.get("/weather/forecast/crewai", response_model_exclude_none=True)
 async def get_crewai_weather_route(
@@ -52,24 +42,19 @@ async def get_crewai_weather_route(
 ) -> AgentResponse:
     """Return a CrewAI-generated weather summary for a city."""
     if not request.city or not request.city.strip():
-        return JSONResponse(
-            status_code=401,
-            content={"status": "fail", "message": "City name cannot be empty."}
-        )
+        return generic_api_response(401, "fail", "City name cannot be empty.")
     try:
         city = validate_query(request.city)
     except GuardrailViolation as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return generic_api_response(400, "fail", str(exc))
 
     try:
         logger.info("Fetching CrewAI weather report for city: %s", city)
         return await service.get_weather_forecast_crewai(city)
     except CityNotFoundError as exc:
-        #raise HTTPException(status_code=404, detail=str(exc)) from exc
         return generic_api_response(404, "fail", str(exc))
     except WeatherProviderError:
         logger.warning("CrewAI weather provider failed for city: %s", request.city.strip())
-        #return assistant_error_response()
         return generic_api_response(502, "fail", "Weather assistant unavailable")
     except Exception as exc:
         logger.exception("Unexpected CrewAI weather error for city: %s", request.city.strip())
