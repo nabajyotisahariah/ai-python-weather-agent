@@ -107,7 +107,32 @@ pip install pydantic
 Create `app/schemas/weather.py`:
 
 ```
-from typing import Annotatedfrom pydantic import BaseModel, Field, StringConstraintsCityName = Annotated[    str,    StringConstraints(        strip_whitespace=True,        min_length=2,        max_length=100,    ),]class WeatherRequest(BaseModel):    city: CityNameclass ForecastRequest(BaseModel):    city: CityName    days: int = Field(default=5, ge=1, le=7)class WeatherResponse(BaseModel):    city: str    temperature_c: float    condition: str
+from typing import Annotated
+from pydantic import BaseModel, Field, StringConstraints
+
+CityName = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=2,
+        max_length=100,
+    ),
+]
+
+
+class WeatherRequest(BaseModel):
+    city: CityName
+
+
+class ForecastRequest(BaseModel):
+    city: CityName
+    days: int = Field(default=5, ge=1, le=7)
+
+
+class WeatherResponse(BaseModel):
+    city: str
+    temperature_c: float
+    condition: str
 ```
 
 Pydantic automatically rejects invalid forecast durations and malformed request bodies when used as FastAPI request models.

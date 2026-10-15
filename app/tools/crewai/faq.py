@@ -8,6 +8,7 @@ from langchain_community.vectorstores import FAISS
 
 from app.config import settings
 from app.guardrails.input_guardrails import validate_query
+from app.guardrails.tool_guardrails import validate_tool_call
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ def search_faq(query: str) -> str:
     returns a concise answer based only on retrieved FAQ content.
     """
 
+    validate_tool_call("search_faq", {"query": query})
     query = validate_query(query)
     print(f">>>> SEARCH FAQ CALLED WITH query={query}")
 

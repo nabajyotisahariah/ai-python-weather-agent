@@ -5,6 +5,7 @@ from crewai.tools import tool
 
 from app.agents.crewai import build_weather_crew, build_weather_forecast_crew, build_faq_crew
 from app.guardrails.input_guardrails import validate_query
+from app.guardrails.tool_guardrails import validate_tool_call
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ def get_current_weather(city: str) -> str:
     """
     Get the current weather conditions for a city.
     """
+    validate_tool_call("get_weather", {"city": city})
     print("get_current_weather city ",city)
     return run_weather_agent(city)
 
@@ -46,6 +48,10 @@ def get_weather_forecast(city: str, days: int = 7) -> str:
     """
     Get the weather forecast for a city.
     """
+    validate_tool_call(
+        "get_weather_forecast",
+        {"city": city, "days": days},
+    )
     print("get_weather_forecast city ",city, " days ",days)
     return run_forecast_agent(city, days)
 
@@ -54,5 +60,6 @@ def answer_faq_question(question: str) -> str:
     """
     Answer FAQ questions related to weather pricing, subscriptions, and usage.
     """
+    validate_tool_call("search_faq", {"query": question})
     print("answer_faq_question question ", question)
     return run_faq_agent(question)

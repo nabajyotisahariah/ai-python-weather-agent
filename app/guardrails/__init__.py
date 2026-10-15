@@ -3,5 +3,12 @@ from app.guardrails.input_guardrails import (
     GuardrailViolation,
     validate_query,
 )
+from app.guardrails.tool_guardrails import ALLOWED_TOOLS, validate_tool_call
 
-__all__ = ["MAX_QUERY_LENGTH", "GuardrailViolation", "validate_query"]
+__all__ = [
+    "ALLOWED_TOOLS",
+    "MAX_QUERY_LENGTH",
+    "GuardrailViolation",
+    "validate_query",
+    "validate_tool_call",
+]

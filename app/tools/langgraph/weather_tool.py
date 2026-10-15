@@ -2,10 +2,12 @@
 import httpx
 from langchain_core.tools import tool
 from app.config import settings
+from app.guardrails.tool_guardrails import validate_tool_call
 
 @tool
 async def get_weather(city: str) -> str:
     """Get current weather information for a city."""
+    validate_tool_call("get_weather", {"city": city})
     city = city.strip()
     url = f"{settings.weather_api_url.rstrip('/')}/{quote(city, safe='')}"
 
@@ -26,4 +28,3 @@ async def get_weather(city: str) -> str:
         f"Weather: {current['weatherDesc'][0]['value']}\n"
         f"Wind Speed: {current['windspeedKmph']} km/h"
     )
-
