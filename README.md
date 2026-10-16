@@ -130,6 +130,10 @@ docker compose down
 
 The API can also run without Redis. In that case, requests bypass the cache and call the upstream weather or agent provider directly.
 
+The application shares one `AsyncRedisCache` Singleton instance across its services and
+orchestrators. It creates the Redis client once when caching is enabled; when
+caching is disabled, cache reads return no result and writes are skipped.
+
 ## Run the API
 
 Start the development server from the project root:
@@ -335,7 +339,12 @@ Example response:
 }
 ```
 
-Repeated requests for the exact same query will hit the Redis cache and return `"isCached": true`.
+Agent report cache keys include the provider and a normalized query. Query text
+is case-folded, and runs of non-alphanumeric characters (including spaces and
+punctuation) become a single hyphen. For example,
+`Delhi upcoming weather for 10 days` produces
+`weather:agent:crewai:delhi-upcoming-weather-for-10-days`. Repeated requests
+that normalize to the same provider/query key return `"isCached": true`.
 
 ### Multi-Agent Orchestration Flow
 
@@ -357,7 +366,7 @@ sequenceDiagram
 
     User->>API: POST /weather/agent {query}
     API->>Service: process_weather_query(query)
-    Service->>Cache: Check weather:agent:{query}
+    Service->>Cache: Check weather:agent:{provider}:{normalized-query}
     
     alt Cache Hit
         Cache-->>Service: Return cached report
@@ -425,7 +434,7 @@ CORS is also configured to allow cross-origin requests. This can be restricted i
 ```text
 app/
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
-├── orchestrator/        # CrewAI multi-agent orchestrator
+├── orchestrator/        # CrewAI and LangGraph multi-agent orchestrators
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Weather service and service interface
