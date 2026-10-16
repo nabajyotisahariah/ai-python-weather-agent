@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Iterator
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,11 +8,13 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.route.weather import get_weather_service
 from app.route.weather_forecast import get_weather_forecast_service
+from app.schema.weather import AgentResponse
 from app.services.weather_service import (
     CityNotFoundError,
     WeatherProviderError,
     WeatherService,
 )
+from app.services.weather_agent_service import WeatherAgentService
 
 
 class StubWeatherService:
@@ -150,7 +152,10 @@ def test_redis_health_check_returns_service_unavailable_on_timeout(
         response = client.get("/api/v1/health/redis")
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "Redis connection error."}
+    assert response.json() == {
+        "status": "fail",
+        "message": "Redis connection error.",
+    }
 
 
 def test_redis_health_check_reports_disabled_without_connecting(
@@ -167,29 +172,27 @@ def test_redis_health_check_reports_disabled_without_connecting(
     redis_from_url.assert_not_called()
 
 
-def test_redis_cache_is_noop_when_disabled() -> None:
-    from app.utils.redis_cache import AsyncRedisCache
+def test_redis_cache_is_singleton_and_noop_without_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.cache.redis_cache import AsyncRedisCache
 
     async def run_test() -> None:
-        with (
-            patch("app.config.settings.redis_enabled", False),
-            patch("app.utils.redis_cache.Redis.from_url") as redis_from_url,
-        ):
-            cache = AsyncRedisCache()
-            assert cache.redis is None
-            assert await cache.get("weather:test") is None
-            await cache.set("weather:test", {"value": "test"})
-
-        redis_from_url.assert_not_called()
+        cache = AsyncRedisCache()
+        monkeypatch.setattr(cache, "redis", None)
+        assert AsyncRedisCache() is cache
+        assert await cache.get("weather:test") is None
+        await cache.set("weather:test", {"value": "test"})
 
     asyncio.run(run_test())
 
 
-def test_current_weather_uses_redis_cache() -> None:
+def test_current_weather_uses_redis_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     async def run_test() -> None:
         cache = FakeRedis()
         http_client = FakeHttpClient()
-        service = WeatherService(redis_client=cache)
+        service = WeatherService()
+        monkeypatch.setattr(service.cache, "redis", cache)
 
         with patch("app.services.weather_service.httpx.AsyncClient", return_value=http_client):
             first_result = await service.get_current_weather("Delhi")
@@ -205,10 +208,11 @@ def test_current_weather_uses_redis_cache() -> None:
     asyncio.run(run_test())
 
 
-def test_agent_report_uses_redis_cache() -> None:
+def test_agent_report_uses_redis_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     async def run_test() -> None:
         cache = FakeRedis()
-        service = WeatherService(redis_client=cache)
+        service = WeatherService()
+        monkeypatch.setattr(service.cache, "redis", cache)
         kickoff_calls = 0
 
         class FakeCrew:
@@ -257,7 +261,7 @@ def test_current_weather_maps_city_not_found_to_404() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "City not found"}
+    assert response.json() == {"status": "fail", "message": "City not found"}
 
 
 def test_autogen_weather_returns_agent_response(client: TestClient) -> None:
@@ -311,7 +315,7 @@ def test_forecast_weather_maps_city_not_found_to_404() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "City not found"}
+    assert response.json() == {"status": "fail", "message": "City not found"}
 
 
 def test_crewai_forecast_weather_returns_agent_response(client: TestClient) -> None:
@@ -360,7 +364,17 @@ def test_unexpected_exception_uses_application_handler() -> None:
 
 def test_weather_agent_returns_agent_response(client: TestClient) -> None:
     # Just mock the run_weather_orchestrator for the test
-    with patch("app.services.weather_agent_service.run_weather_orchestrator") as mock_run:
+    with (
+        patch(
+            "app.route.weather_agent.weather_agent_service._get_cached_report",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "app.route.weather_agent.weather_agent_service._cache_report",
+            new=AsyncMock(),
+        ),
+        patch("app.services.weather_agent_service.run_weather_orchestrator") as mock_run,
+    ):
         async def async_mock(*args, **kwargs):
             return "Mocked CrewAI Response"
             
@@ -372,4 +386,212 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
             "status": "success",
             "message": "Mocked CrewAI Response",
             "isCached": False,
+            "cacheKey": "weather:agent:crewai:delhi",
         }
+
+
+def test_weather_langgraph_agent_returns_agent_response(client: TestClient) -> None:
+    with (
+        patch(
+            "app.route.weather_agent.weather_agent_service._get_cached_report",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "app.route.weather_agent.weather_agent_service._cache_report",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.services.weather_agent_service.run_weather_orchestrator_langgraph",
+            new=AsyncMock(
+                return_value=(
+                    "Mocked LangGraph Response",
+                    "weather:orchestrator:langgraph:delhi",
+                )
+            ),
+        ),
+    ):
+        response = client.post(
+            "/api/v1/weather/agent/langgraph",
+            json={"city": "Delhi"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "success",
+        "message": "Mocked LangGraph Response",
+        "isCached": False,
+        "cacheKey": "weather:orchestrator:langgraph:delhi",
+    }
+
+
+def test_agent_providers_use_separate_report_cache_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run_test() -> None:
+        service = WeatherAgentService()
+        monkeypatch.setattr(service.cache, "redis", FakeRedis())
+        await service._cache_report(
+            "Delhi",
+            AgentResponse(
+                status="success",
+                message="CrewAI report",
+                isCached=False,
+                cacheKey=service._report_cache_key("Delhi", "crewai"),
+            ),
+            "crewai",
+        )
+        await service._cache_report(
+            "Delhi",
+            AgentResponse(
+                status="success",
+                message="LangGraph report",
+                isCached=False,
+                cacheKey="weather:orchestrator:langgraph:delhi",
+            ),
+            "langgraph",
+        )
+
+        crewai_report = await service._get_cached_report("Delhi", "crewai")
+        langgraph_report = await service._get_cached_report("Delhi", "langgraph")
+
+        assert crewai_report is not None
+        assert crewai_report.message == "CrewAI report"
+        assert crewai_report.isCached is True
+        assert crewai_report.cacheKey == "weather:agent:crewai:delhi"
+        assert langgraph_report is not None
+        assert langgraph_report.message == "LangGraph report"
+        assert langgraph_report.isCached is True
+        assert langgraph_report.cacheKey == "weather:orchestrator:langgraph:delhi"
+        assert service._report_cache_key("Delhi", "crewai") != (
+            service._report_cache_key("Delhi", "langgraph")
+        )
+
+    asyncio.run(run_test())
+
+
+def test_agent_report_cache_key_normalizes_query_to_alphanumeric_words() -> None:
+    assert (
+        WeatherAgentService._report_cache_key(
+            "Delhi upcoming weather for 10 days", "crewai"
+        )
+        == "weather:agent:crewai:delhi-upcoming-weather-for-10-days"
+    )
+    assert (
+        WeatherAgentService._report_cache_key(
+            "  Delhi,   upcoming weather! ", "crewai"
+        )
+        == "weather:agent:crewai:delhi-upcoming-weather"
+    )
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "kwargs", "expected_response"),
+    [
+        (
+            "get",
+            "/api/v1/weather/crewai",
+            {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
+        (
+            "get",
+            "/api/v1/weather/langgraph",
+            {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
+        (
+            "get",
+            "/api/v1/weather/autogen",
+            {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
+        (
+            "get",
+            "/api/v1/weather/forecast/crewai",
+            {"params": {"city": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
+        (
+            "post",
+            "/api/v1/weather/agent",
+            {"json": {"query": "x" * 1001}},
+            {
+                "status": "fail",
+                "message": "Query exceeds the allowed length",
+            },
+        ),
+    ],
+)
+def test_llm_routes_reject_queries_over_maximum_length(
+    client: TestClient,
+    method: str,
+    path: str,
+    kwargs: dict[str, object],
+    expected_response: dict[str, str],
+) -> None:
+    response = getattr(client, method)(path, **kwargs)
+
+    assert response.status_code == 400
+    assert response.json() == expected_response
+
+
+def test_request_validation_error_uses_generic_response(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/weather/agent",
+        json={"query": ["not", "a", "string"]},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "status": "fail",
+        "message": "Request validation failed",
+    }
+
+
+def test_http_error_uses_generic_response(client: TestClient) -> None:
+    response = client.get("/api/v1/does-not-exist")
+
+    assert response.status_code == 404
+    assert response.json() == {"status": "fail", "message": "Not Found"}
+
+
+@pytest.mark.parametrize(
+    ("error", "status_code", "message"),
+    [
+        (CityNotFoundError("City not found"), 404, "City not found"),
+        (
+            WeatherProviderError("Weather assistant unavailable"),
+            502,
+            "Weather assistant unavailable",
+        ),
+    ],
+)
+def test_weather_agent_returns_generic_failure_response(
+    client: TestClient,
+    error: Exception,
+    status_code: int,
+    message: str,
+) -> None:
+    with patch(
+        "app.route.weather_agent.weather_agent_service.process_weather_query",
+        new=AsyncMock(side_effect=error),
+    ):
+        response = client.post(
+            "/api/v1/weather/agent",
+            json={"query": "What is the weather in Delhi?"},
+        )
+
+    assert response.status_code == status_code
+    assert response.json() == {"status": "fail", "message": message}

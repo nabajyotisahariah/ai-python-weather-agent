@@ -10,6 +10,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 
 from app.config import settings
+from app.guardrails.input_guardrails import validate_query
 from app.tools.langgraph.weather_tool import get_weather
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ def _build_graph(llm: ChatOpenAI):
 
 async def run_weather_agent(city: str) -> str:
     """Run the LangGraph weather assistant and return its final response."""
+    city = validate_query(city)
     logger.info("Running LangGraph weather agent for city: %s", city)
     
     # Provide an explicit client and gracefully clean it up avoiding thread pool closure leaks
@@ -56,7 +58,17 @@ async def run_weather_agent(city: str) -> str:
         )
         graph = _build_graph(llm)
         result = await graph.ainvoke(
-            {"messages": [HumanMessage(content=f"What is the weather in {city}?")]}
+            {
+                "messages": [
+                    HumanMessage(
+                        content=(
+                            f"What is the weather in {city}? Use the weather tool, "
+                            "copy numeric values exactly, and disclose any unavailable "
+                            "provider fields instead of guessing."
+                        )
+                    )
+                ]
+            }
         )
         
     logger.info("LangGraph weather agent completed for city: %s", city)

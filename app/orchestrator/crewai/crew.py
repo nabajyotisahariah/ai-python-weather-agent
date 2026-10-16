@@ -4,12 +4,14 @@ import logging
 from crewai import Crew, Process, Agent, Task
 from app.orchestrator.crewai.agents import create_weather_orchestrator
 from app.orchestrator.crewai.tasks import create_weather_task
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
+from app.guardrails.input_guardrails import validate_query
 
 logger = logging.getLogger(__name__)
 redis_cache = AsyncRedisCache()
 
 async def run_weather_orchestrator(query: str) -> str:
+    query = validate_query(query)
     cache_key = f"weather:orchestrator:{query.casefold().replace(' ', '_')}"
     cached_result = await redis_cache.get(cache_key)
     

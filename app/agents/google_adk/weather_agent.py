@@ -8,6 +8,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from app.config import settings
+from app.guardrails.input_guardrails import validate_query
 from app.tools.autogen.weather_tool import get_weather
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ def _build_agent() -> Agent:
 
 
 async def _run_weather_agent(city: str) -> str:
+    city = validate_query(city)
     try:
         session_service = InMemorySessionService()
         session = await session_service.create_session(
@@ -75,5 +77,4 @@ def run_weather_agent(city: str) -> str:
     except Exception as exc:
         logger.exception("Google ADK weather agent crashed for city: %s", city)
         raise RuntimeError(f"Google ADK weather agent failed for city: {city}") from exc
-
 

@@ -4,15 +4,15 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 import httpx
-from redis.asyncio import Redis
 #from dotenv import load_dotenv
 
 from app.agents.crewai import build_weather_forecast_crew
 from app.services.interface.weather_forecast_interface import WeatherForecastInterface
 from app.config import settings
 from app.schema.weather import AgentResponse
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 from app.utils.langfuse_observability import observe_operation, update_observation
+from app.guardrails.input_guardrails import validate_query
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,8 +36,8 @@ class WeatherForecastService(WeatherForecastInterface):
     base_url: str = settings.weather_api_url
     timeout_seconds: float = settings.weather_timeout_seconds
 
-    def __init__(self, redis_client: Redis | None = None) -> None:
-        self.cache = AsyncRedisCache(redis_client)
+    def __init__(self) -> None:
+        self.cache = AsyncRedisCache()
 
     @staticmethod
     def _cache_key(city: str, days: int) -> str:
@@ -148,7 +148,7 @@ class WeatherForecastService(WeatherForecastInterface):
 
     async def get_weather_forecast_crewai(self, city: str) -> AgentResponse:
         """Run the CrewAI weather forecast agent without blocking the API event loop."""
-        city = city.strip()
+        city = validate_query(city)
         cached_report = await self._get_cached_report("crewai-forecast", city)
         if cached_report:
             return cached_report

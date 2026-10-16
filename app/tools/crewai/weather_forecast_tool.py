@@ -1,6 +1,7 @@
 import requests
 from crewai.tools import tool
 from app.config import settings
+from app.guardrails.tool_guardrails import validate_tool_call
 
 
 @tool("get_weather_forecast")
@@ -9,6 +10,10 @@ def get_weather_forecast(city: str, days: int = 7) -> str:
     Get the weather forecast information for a city for a given number of days.
     """
 
+    validate_tool_call(
+        "get_weather_forecast",
+        {"city": city, "days": days},
+    )
     url = f"{settings.weather_api_url}/{city}?format=j1"
 
     print("tool.get_weather_forecast city ",city," days ",days)

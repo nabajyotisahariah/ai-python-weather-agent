@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 import httpx
-from redis.asyncio import Redis
 #from dotenv import load_dotenv
 
 from app.agents.crewai import build_weather_crew
@@ -14,8 +13,9 @@ from app.agents.autogen import run_weather_agent as run_autogen_weather_agent
 from app.services.interface.weather_interface import WeatherServiceInterface
 from app.config import settings
 from app.schema.weather import AgentResponse
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 from app.utils.langfuse_observability import observe_operation, update_observation
+from app.guardrails.input_guardrails import validate_query
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,8 +39,8 @@ class WeatherService(WeatherServiceInterface):
     base_url: str = settings.weather_api_url
     timeout_seconds: float = settings.weather_timeout_seconds
 
-    def __init__(self, redis_client: Redis | None = None) -> None:
-        self.cache = AsyncRedisCache(redis_client)
+    def __init__(self) -> None:
+        self.cache = AsyncRedisCache()
 
     @staticmethod
     def _cache_key(city: str) -> str:
@@ -119,7 +119,7 @@ class WeatherService(WeatherServiceInterface):
 
     async def get_crewai_weather_report(self, city: str) -> AgentResponse:
         """Run the CrewAI weather agent without blocking the API event loop."""
-        city = city.strip()
+        city = validate_query(city)
         cached_report = await self._get_cached_report("crewai", city)
         if cached_report:
             return cached_report
@@ -147,7 +147,7 @@ class WeatherService(WeatherServiceInterface):
 
     async def get_langgraph_weather_report(self, city: str) -> AgentResponse:
         """Run the LangGraph weather agent without blocking the API event loop."""
-        city = city.strip()
+        city = validate_query(city)
         cached_report = await self._get_cached_report("langgraph", city)
         if cached_report:
             return cached_report
@@ -171,7 +171,7 @@ class WeatherService(WeatherServiceInterface):
 
     async def get_autogen_weather_report(self, city: str) -> AgentResponse:
         """Run the AutoGen weather agent without blocking the API event loop."""
-        city = city.strip()
+        city = validate_query(city)
         cached_report = await self._get_cached_report("autogen", city)
         if cached_report:
             return cached_report

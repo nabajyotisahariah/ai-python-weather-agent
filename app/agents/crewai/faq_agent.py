@@ -1,7 +1,9 @@
 from crewai import Agent, Crew, Process, Task
 from app.tools.crewai.faq import search_faq, search_faq_v2
+from app.guardrails.input_guardrails import validate_query
 
 def build_faq_crew(question: str) -> Crew:
+    question = validate_query(question)
     faq_agent = Agent(
         role="FAQ Assistant",
         goal="Provide accurate answers to questions based on the FAQ data",

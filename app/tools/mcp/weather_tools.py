@@ -9,8 +9,10 @@ from langchain_community.vectorstores import FAISS
 from app.services.weather_service import WeatherService
 from app.services.weather_forecast_service import WeatherForecastService
 from app.config import settings
+from app.guardrails.input_guardrails import validate_query
+from app.guardrails.tool_guardrails import validate_tool_call
 from app.schema.weather import AgentResponse
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ async def get_weather(city: str) -> AgentResponse:
         Current weather information.
     """
 
+    validate_tool_call("get_weather", {"city": city})
     city = city.strip()
 
     if not city:
@@ -53,6 +56,10 @@ async def get_weather_forecast(
         Weather forecast information.
     """
 
+    validate_tool_call(
+        "get_weather_forecast",
+        {"city": city, "days": days},
+    )
     city = city.strip()
 
     if not city:
@@ -76,6 +83,8 @@ async def search_faq(query: str) -> str:
     Returns:
         A concise answer based on the FAQ content.
     """
+    validate_tool_call("search_faq", {"query": query})
+    query = validate_query(query)
     logger.info(f">>>> SEARCH FAQ CALLED WITH query={query}")
 
     cache_key = f"weather:faq:{query.strip().casefold()}"
@@ -170,5 +179,3 @@ FAQ Context:
     except Exception as e:
         logger.error(f"Error searching FAQ: {e}", exc_info=True)
         return f"Error searching FAQ knowledge base: {e}"
-
-

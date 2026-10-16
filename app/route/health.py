@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from app.utils.response import generic_api_response
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,9 +31,9 @@ async def redis_health_check():
         logger.info("Checking Redis connection to %s", settings.redis_url)
         redis_client = redis.Redis.from_url(settings.redis_url)
         if not redis_client.ping():
-            raise HTTPException(status_code=503, detail="Redis is not responding.")
+            return generic_api_response(503, "fail", "Redis is not responding.")
 
         return {"status": "ok"}
     except redis.exceptions.RedisError as exc:
         logger.error("Error occurred while checking Redis connection: %s", exc)
-        raise HTTPException(status_code=503, detail="Redis connection error.") from exc
+        return generic_api_response(503, "fail", "Redis connection error.")

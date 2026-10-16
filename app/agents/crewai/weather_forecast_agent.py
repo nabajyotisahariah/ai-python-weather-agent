@@ -1,9 +1,11 @@
 from crewai import Agent, Crew, Process, Task
 
+from app.guardrails.input_guardrails import validate_query
 from app.tools.crewai.weather_forecast_tool import get_weather_forecast
 
 
 def build_weather_forecast_crew(city: str, days: int = 7) -> Crew:
+    city = validate_query(city)
     forecast_agent = Agent(
         role="Weather Forecast Assistant",
         goal="Provide accurate and easy-to-understand weather forecast information",
@@ -26,6 +28,10 @@ def build_weather_forecast_crew(city: str, days: int = 7) -> Crew:
         - Dates
         - Max and Min Temperatures
         - Weather conditions
+
+        Copy every numeric weather value from the tool result exactly.
+        Do not estimate or infer missing values. If a value is unavailable,
+        say that the provider did not return it.
         """,
         expected_output="""
         A concise weather forecast report containing:

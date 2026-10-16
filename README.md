@@ -18,6 +18,9 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Redis caching for weather data and generated reports
 - Health-check endpoint
 - Pydantic request and response validation (null fields are excluded from JSON responses)
+- Provider-backed output guardrails for current weather and forecast reports, including explicit missing-field disclosures
+- AI-generated weather numbers are checked against provider data before responses are cached or returned
+- LLM-bound user input is trimmed and limited to 1,000 characters
 - CORS support for API clients
 - Security headers for HTTP responses
 - Structured logging and provider error handling
@@ -127,6 +130,10 @@ docker compose down
 
 The API can also run without Redis. In that case, requests bypass the cache and call the upstream weather or agent provider directly.
 
+The application shares one `AsyncRedisCache` Singleton instance across its services and
+orchestrators. It creates the Redis client once when caching is enabled; when
+caching is disabled, cache reads return no result and writes are skipped.
+
 ## Run the API
 
 Start the development server from the project root:
@@ -174,6 +181,17 @@ Run the complete test suite from the project root:
 ```powershell
 python -m pytest tests/ -v
 ```
+
+## Output guardrails
+
+Current conditions and forecast rows are validated against Pydantic models.
+Unavailable provider fields are returned in each weather record's
+`unavailable_fields` list rather than being filled with guessed values.
+Generated current-weather and CrewAI forecast reports include the underlying
+provider data, and numeric weather claims that do not match that data are
+rejected before caching or returning the report. Responses also enforce the
+application's output schema, message-size limit, and credential-like content
+policy.
 
 
 The project pins AutoGen `0.7.5` and Langfuse `4.15.6` in `requirements.txt`.
@@ -321,7 +339,12 @@ Example response:
 }
 ```
 
-Repeated requests for the exact same query will hit the Redis cache and return `"isCached": true`.
+Agent report cache keys include the provider and a normalized query. Query text
+is case-folded, and runs of non-alphanumeric characters (including spaces and
+punctuation) become a single hyphen. For example,
+`Delhi upcoming weather for 10 days` produces
+`weather:agent:crewai:delhi-upcoming-weather-for-10-days`. Repeated requests
+that normalize to the same provider/query key return `"isCached": true`.
 
 ### Multi-Agent Orchestration Flow
 
@@ -343,7 +366,7 @@ sequenceDiagram
 
     User->>API: POST /weather/agent {query}
     API->>Service: process_weather_query(query)
-    Service->>Cache: Check weather:agent:{query}
+    Service->>Cache: Check weather:agent:{provider}:{normalized-query}
     
     alt Cache Hit
         Cache-->>Service: Return cached report
@@ -410,8 +433,9 @@ CORS is also configured to allow cross-origin requests. This can be restricted i
 
 ```text
 app/
+├── cache/               # Shared Redis cache
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
-├── orchestrator/        # CrewAI multi-agent orchestrator
+├── orchestrator/        # CrewAI and LangGraph multi-agent orchestrators
 ├── route/               # FastAPI route handlers
 ├── schema/              # Pydantic request and response models
 ├── services/            # Weather service and service interface
@@ -419,7 +443,7 @@ app/
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
 ├── weather-mcp.py       # FastMCP server configuration
-└── utils/               # Logging and Redis cache helpers
+└── utils/               # Logging and response helpers
 data/                    # Data directory for vector DB, FAQ documents, and prompts
 script/                  # Helper and test scripts (e.g., FAISS index builder)
 helm-config/             # Kubernetes Helm chart for Application

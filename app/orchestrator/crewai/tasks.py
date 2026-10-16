@@ -22,6 +22,8 @@ def create_weather_task(agent, query: str) -> Task:
         subscriptions, or usage, use the FAQ capability.
 
         Combine the results into one clear response.
+        Use only facts returned by the selected tools. Copy numeric weather
+        values exactly, and disclose when requested data is unavailable.
         """,
 
         expected_output="""
