@@ -175,7 +175,7 @@ def test_redis_health_check_reports_disabled_without_connecting(
 def test_redis_cache_is_singleton_and_noop_without_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.utils.redis_cache import AsyncRedisCache
+    from app.cache.redis_cache import AsyncRedisCache
 
     async def run_test() -> None:
         cache = AsyncRedisCache()

@@ -433,6 +433,7 @@ CORS is also configured to allow cross-origin requests. This can be restricted i
 
 ```text
 app/
+├── cache/               # Shared Redis cache
 ├── agents/              # CrewAI, LangGraph, AutoGen, and Google ADK agents
 ├── orchestrator/        # CrewAI and LangGraph multi-agent orchestrators
 ├── route/               # FastAPI route handlers
@@ -442,7 +443,7 @@ app/
 ├── config.py            # Environment-backed settings
 ├── main.py              # FastAPI application
 ├── weather-mcp.py       # FastMCP server configuration
-└── utils/               # Logging and Redis cache helpers
+└── utils/               # Logging and response helpers
 data/                    # Data directory for vector DB, FAQ documents, and prompts
 script/                  # Helper and test scripts (e.g., FAISS index builder)
 helm-config/             # Kubernetes Helm chart for Application

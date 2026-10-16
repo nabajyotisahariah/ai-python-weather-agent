@@ -8,7 +8,7 @@ from app.orchestrator.crewai.crew import run_weather_orchestrator
 from app.orchestrator.langgraph.orchestrator import run_weather_orchestrator_langgraph
 from app.schema.weather import AgentResponse
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 
 logger = logging.getLogger(__name__)
 AgentProvider = Literal["crewai", "langgraph"]

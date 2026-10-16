@@ -20,7 +20,7 @@ from app.orchestrator.langgraph.weather_agent import build_current_weather_deleg
 from app.orchestrator.langgraph.weather_forecast_agent import (
     build_weather_forecast_delegate,
 )
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 
 logger = logging.getLogger(__name__)
 redis_cache = AsyncRedisCache()

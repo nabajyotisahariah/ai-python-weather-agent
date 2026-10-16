@@ -10,7 +10,7 @@ from app.agents.crewai import build_weather_forecast_crew
 from app.services.interface.weather_forecast_interface import WeatherForecastInterface
 from app.config import settings
 from app.schema.weather import AgentResponse
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 from app.utils.langfuse_observability import observe_operation, update_observation
 from app.guardrails.input_guardrails import validate_query
 import logging

@@ -13,7 +13,7 @@ from app.agents.autogen import run_weather_agent as run_autogen_weather_agent
 from app.services.interface.weather_interface import WeatherServiceInterface
 from app.config import settings
 from app.schema.weather import AgentResponse
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 from app.utils.langfuse_observability import observe_operation, update_observation
 from app.guardrails.input_guardrails import validate_query
 import logging

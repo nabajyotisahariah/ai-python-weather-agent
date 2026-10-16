@@ -4,7 +4,7 @@ import logging
 from crewai import Crew, Process, Agent, Task
 from app.orchestrator.crewai.agents import create_weather_orchestrator
 from app.orchestrator.crewai.tasks import create_weather_task
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 from app.guardrails.input_guardrails import validate_query
 
 logger = logging.getLogger(__name__)

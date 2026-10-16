@@ -12,7 +12,7 @@ from app.config import settings
 from app.guardrails.input_guardrails import validate_query
 from app.guardrails.tool_guardrails import validate_tool_call
 from app.schema.weather import AgentResponse
-from app.utils.redis_cache import AsyncRedisCache
+from app.cache.redis_cache import AsyncRedisCache
 
 logger = logging.getLogger(__name__)
 
