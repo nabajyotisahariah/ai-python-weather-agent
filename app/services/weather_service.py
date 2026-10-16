@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 import httpx
-from redis.asyncio import Redis
 #from dotenv import load_dotenv
 
 from app.agents.crewai import build_weather_crew
@@ -40,8 +39,8 @@ class WeatherService(WeatherServiceInterface):
     base_url: str = settings.weather_api_url
     timeout_seconds: float = settings.weather_timeout_seconds
 
-    def __init__(self, redis_client: Redis | None = None) -> None:
-        self.cache = AsyncRedisCache(redis_client)
+    def __init__(self) -> None:
+        self.cache = AsyncRedisCache()
 
     @staticmethod
     def _cache_key(city: str) -> str:

@@ -11,16 +11,26 @@ logger = logging.getLogger(__name__)
 
 
 class AsyncRedisCache:
-    def __init__(self, redis_client: Redis | None = None) -> None:
-        self.redis = (
-            redis_client
-            if redis_client is not None
-            else (
-                Redis.from_url(settings.redis_url, decode_responses=True)
-                if settings.redis_enabled
-                else None
-            )
+    _instance: "AsyncRedisCache | None" = None
+    _initialized = False
+
+    def __new__(cls) -> "AsyncRedisCache":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self) -> None:
+        if self._initialized:
+            print("AsyncRedisCache instance already initialized. Skipping re-initialization.")
+            return
+
+        print("AsyncRedisCache Initializing instance.")
+        self.redis: Redis | None = (
+            Redis.from_url(settings.redis_url, decode_responses=True)
+            if settings.redis_enabled
+            else None
         )
+        self._initialized = True
 
     async def get(self, key: str) -> dict[str, Any] | None:
         if self.redis is None:

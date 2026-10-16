@@ -2,8 +2,6 @@ import logging
 import re
 from typing import Literal
 
-from redis.asyncio import Redis
-
 from app.config import settings
 from app.guardrails.input_guardrails import validate_query
 from app.orchestrator.crewai.crew import run_weather_orchestrator
@@ -20,8 +18,8 @@ class WeatherAgentService(WeatherAgentInterface):
     base_url: str = settings.weather_api_url
     timeout_seconds: float = settings.weather_timeout_seconds
 
-    def __init__(self, redis_client: Redis | None = None) -> None:
-        self.cache = AsyncRedisCache(redis_client)
+    def __init__(self) -> None:
+        self.cache = AsyncRedisCache()
 
     @staticmethod
     def _report_cache_key(query: str, provider: AgentProvider) -> str:

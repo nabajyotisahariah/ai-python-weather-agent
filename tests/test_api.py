@@ -172,29 +172,27 @@ def test_redis_health_check_reports_disabled_without_connecting(
     redis_from_url.assert_not_called()
 
 
-def test_redis_cache_is_noop_when_disabled() -> None:
+def test_redis_cache_is_singleton_and_noop_without_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from app.utils.redis_cache import AsyncRedisCache
 
     async def run_test() -> None:
-        with (
-            patch("app.config.settings.redis_enabled", False),
-            patch("app.utils.redis_cache.Redis.from_url") as redis_from_url,
-        ):
-            cache = AsyncRedisCache()
-            assert cache.redis is None
-            assert await cache.get("weather:test") is None
-            await cache.set("weather:test", {"value": "test"})
-
-        redis_from_url.assert_not_called()
+        cache = AsyncRedisCache()
+        monkeypatch.setattr(cache, "redis", None)
+        assert AsyncRedisCache() is cache
+        assert await cache.get("weather:test") is None
+        await cache.set("weather:test", {"value": "test"})
 
     asyncio.run(run_test())
 
 
-def test_current_weather_uses_redis_cache() -> None:
+def test_current_weather_uses_redis_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     async def run_test() -> None:
         cache = FakeRedis()
         http_client = FakeHttpClient()
-        service = WeatherService(redis_client=cache)
+        service = WeatherService()
+        monkeypatch.setattr(service.cache, "redis", cache)
 
         with patch("app.services.weather_service.httpx.AsyncClient", return_value=http_client):
             first_result = await service.get_current_weather("Delhi")
@@ -210,10 +208,11 @@ def test_current_weather_uses_redis_cache() -> None:
     asyncio.run(run_test())
 
 
-def test_agent_report_uses_redis_cache() -> None:
+def test_agent_report_uses_redis_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     async def run_test() -> None:
         cache = FakeRedis()
-        service = WeatherService(redis_client=cache)
+        service = WeatherService()
+        monkeypatch.setattr(service.cache, "redis", cache)
         kickoff_calls = 0
 
         class FakeCrew:
@@ -425,9 +424,12 @@ def test_weather_langgraph_agent_returns_agent_response(client: TestClient) -> N
     }
 
 
-def test_agent_providers_use_separate_report_cache_keys() -> None:
+def test_agent_providers_use_separate_report_cache_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def run_test() -> None:
-        service = WeatherAgentService(redis_client=FakeRedis())
+        service = WeatherAgentService()
+        monkeypatch.setattr(service.cache, "redis", FakeRedis())
         await service._cache_report(
             "Delhi",
             AgentResponse(
