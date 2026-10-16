@@ -467,6 +467,21 @@ def test_agent_providers_use_separate_report_cache_keys() -> None:
     asyncio.run(run_test())
 
 
+def test_agent_report_cache_key_normalizes_query_to_alphanumeric_words() -> None:
+    assert (
+        WeatherAgentService._report_cache_key(
+            "Delhi upcoming weather for 10 days", "crewai"
+        )
+        == "weather:agent:crewai:delhi-upcoming-weather-for-10-days"
+    )
+    assert (
+        WeatherAgentService._report_cache_key(
+            "  Delhi,   upcoming weather! ", "crewai"
+        )
+        == "weather:agent:crewai:delhi-upcoming-weather"
+    )
+
+
 @pytest.mark.parametrize(
     ("method", "path", "kwargs", "expected_response"),
     [

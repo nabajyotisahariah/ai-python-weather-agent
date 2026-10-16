@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Literal
 
 from redis.asyncio import Redis
@@ -24,7 +25,8 @@ class WeatherAgentService(WeatherAgentInterface):
 
     @staticmethod
     def _report_cache_key(query: str, provider: AgentProvider) -> str:
-        return f"weather:agent:{provider}:{query.casefold()}"
+        normalized_query = re.sub(r"[^a-z0-9]+", "-", query.casefold()).strip("-")
+        return f"weather:agent:{provider}:{normalized_query}"
 
     async def _get_cached_report(
         self,
