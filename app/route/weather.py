@@ -104,9 +104,6 @@ async def get_autogen_weather_route(
         return await service.get_autogen_weather_report(city)
     except CityNotFoundError as exc:
         return generic_api_response(404, "fail", str(exc))
-    except WeatherProviderError:
-        logger.warning("AutoGen weather provider failed for city: %s", request.city.strip())
-        return generic_api_response(502, "fail", "Weather assistant unavailable")
     except Exception as exc:
         logger.exception("Unexpected AutoGen weather error for city: %s", request.city.strip())
         return generic_api_response(500, "fail", "An unexpected error occurred")

@@ -10,9 +10,9 @@ from app.guardrails.input_guardrails import validate_query
 logger = logging.getLogger(__name__)
 redis_cache = AsyncRedisCache()
 
-async def run_weather_orchestrator(query: str) -> str:
+async def run_weather_orchestrator(query: str, session_id: str | None = None, user_id: str | None = None) -> str:
     query = validate_query(query)
-    cache_key = f"weather:orchestrator:{query.casefold().replace(' ', '_')}"
+    cache_key = f"weather:orchestrator:{query.casefold().replace(' ', '_')}:{session_id}:{user_id}"
     cached_result = await redis_cache.get(cache_key)
     
     if cached_result and "raw" in cached_result:
@@ -20,11 +20,15 @@ async def run_weather_orchestrator(query: str) -> str:
         return cached_result["raw"]
 
     logger.info("Executing run_weather_orchestrator with query: %s", query)
+
+    #"weather:context:{user_id}:{session_id}"
+    recent_conversation = await redis_cache.get(f"weather:context:{query.casefold().replace(' ', '_')}:{user_id}:{session_id}")
     agent: Agent = create_weather_orchestrator()
 
     task: Task = create_weather_task(
         agent=agent,
         query=query,
+        conversation_history=recent_conversation or [],
     )
 
     crew = Crew(

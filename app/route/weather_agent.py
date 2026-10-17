@@ -30,16 +30,28 @@ async def post_weather_forecast_route(
     
     try:
         query_val = validate_query(query_val)
+
+        #"weather:context:{user_id}:{session_id}"
+        user_id = "default_user"  # Replace with actual user ID if available
+        session_id = request.session_id if request.session_id is not None else None # Replace with actual session ID if available
+        context_key = f"weather:context:{user_id}:{session_id}"
+
+        if(session_id is None):
+            logger.warning("User ID or Session ID is None. Using default values.")
+            #return generic_api_response(400, "fail", "Session ID is None")
+            raise Exception("Session ID is None")
+
     
         logger.info("Fetching current weather for city (POST): %s", query_val)
-        return await service.process_weather_query(query_val)
+        return await service.process_weather_query(query_val, session_id=session_id, user_id=user_id)
 
     except GuardrailViolation as exc:
         return generic_api_response(400, "fail", str(exc))
     except CityNotFoundError as exc:
         return generic_api_response(404, "fail", str(exc))
-    except WeatherProviderError as exc:
-        return generic_api_response(502, "fail", str(exc))
+    except Exception as exc:
+        logger.error("Unexpected error: %s", str(exc))
+        return generic_api_response(400, "fail", str(exc))
 
 
 @router.post("/weather/agent/langgraph", summary="Weather Agent (POST)", description="Returns the current Weather & forecast of the API using a JSON body.", tags=["System"], response_model_exclude_none=True)

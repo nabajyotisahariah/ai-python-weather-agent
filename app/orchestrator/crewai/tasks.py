@@ -3,13 +3,16 @@
 from crewai import Task
 
 
-def create_weather_task(agent, query: str) -> Task:
+def create_weather_task(agent, query: str, conversation_history: list) -> Task:
 
     return Task(
         description=f"""
         Analyze the following user request:
 
         {query}
+
+         Recent conversation:
+        {conversation_history}
 
         Determine which weather or FAQ capabilities are required.
 

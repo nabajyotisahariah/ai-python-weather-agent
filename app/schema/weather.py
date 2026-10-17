@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, model_validator
 class WeatherRequest(BaseModel):
     city: str | None = Field(None, description="City to get weather for")
     query: str | None = Field(None, description="Query string for weather")
+    session_id: str | None = Field(None, description="Session ID for the request")
+    user_id: str | None = Field(None, description="User ID for the request")
 
 
 class WeatherData(BaseModel):
