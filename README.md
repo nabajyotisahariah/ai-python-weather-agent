@@ -1,12 +1,28 @@
 # Weather Assistant API
 
-FastAPI service for current weather data and AI-generated weather summaries. Weather data is retrieved from [wttr.in](https://wttr.in), while summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
+FastAPI service for current weather data, AI-generated weather summaries, FAQ answers, and MCP tool exposure. Weather data is retrieved from [wttr.in](https://wttr.in), while AI summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
 > **🚀 New Feature: GCP Cloud Run & App Engine Deployment**
 > - Application deployment via GCP Cloud Run ([_Note/10_GCP_Deploy_Cloud_Run.md](_Note/10_GCP_Deploy_Cloud_Run.md))
 > - Application deployment via GCP App Engine ([_Note/11_GCP_Deply_APP_Engine.md](_Note/11_GCP_Deply_APP_Engine.md))
 
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
+
+## Documentation
+
+- [README-FAQ.md](README-FAQ.md) — FAQ agent and FAISS vector database setup
+- [README-MCP.md](README-MCP.md) — Model Context Protocol (MCP) server usage
+- [README-TEST.md](README-TEST.md) — testing notes and validation steps
+- [_Note/](./_Note) — deployment and operational notes
+
+## Quick Start
+
+1. Create and activate a virtual environment.
+2. Install dependencies from `requirements.txt`.
+3. Copy `.env.example` to `.env` and add your API keys.
+4. Build the FAISS FAQ index if you want the FAQ agent enabled.
+5. Start Redis if you want caching enabled.
+6. Run the API with `uvicorn` or Docker.
 
 ## Features
 
@@ -37,15 +53,20 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 
 ## Local Setup
 
-Create and activate a virtual environment in PowerShell:
+Create and activate a virtual environment:
 
+PowerShell:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
- source .venv/Scripts/activate (bash)
+python --version
+```
 
- $ python --version
-Python 3.11
+Bash/Zsh:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python --version
 ```
 
 Install the dependencies:
@@ -61,7 +82,7 @@ Create the local environment file:
 Copy-Item .env.example .env
 ```
 
-The app reads runtime settings from `app/config.py` using Pydantic settings. The `.env` file can contain either the uppercase environment variable names shown below or a lower-case `environment` value; the settings loader normalizes them for the application.
+The app reads runtime settings from `app/config.py` using Pydantic settings. The `.env` file can contain either uppercase environment variable names or a lower-case `environment` value; the settings loader normalizes them for the application.
 
 Minimal local configuration:
 
@@ -136,13 +157,19 @@ caching is disabled, cache reads return no result and writes are skipped.
 
 ## Run the API
 
-Start the development server from the project root:
+Start the main API from the project root:
 
 ```powershell
 uvicorn app.main:app --reload
+```
 
-App Engine enviroment variable  
-ENVIRONMENT=production GOOGLE_CLOUD_PROJECT=workspace-prod-511311 DEPLOY_TYPE=app-engine uvicorn app.main:app --reload
+For local App Engine testing, you can set the environment variables before starting the app:
+
+```powershell
+$env:ENVIRONMENT = "production"
+$env:GOOGLE_CLOUD_PROJECT = "workspace-prod-511311"
+$env:DEPLOY_TYPE = "app-engine"
+uvicorn app.main:app --reload
 ```
 
 Alternatively:
@@ -157,6 +184,12 @@ Documentation:
 
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
+
+For the MCP server, see [README-MCP.md](README-MCP.md):
+
+```powershell
+uvicorn app.weather-mcp:app --host 0.0.0.0 --port 8100 --reload
+```
 
 ## Run with Docker
 
@@ -316,27 +349,33 @@ GET /api/v1/weather/google-adk?city=weather of Delhi
 
 PowerShell example (POST):
 
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8000/api/v1/weather/agent" `
-                  -Method Post `
-                  -Body '{"query": "What is the weather of Delhi"}' `
-                  -ContentType "application/json"
 ```
-
-```
+Multi Agent using CrewAI
 curl --location 'http://localhost:8000/api/v1/weather/agent' \
 --header 'Content-Type: application/json' \
---data '{"query": "What is the weather of Delhi"}'
+--data '{"query": "What is the weather forecast for Delhi today and the upcoming days? Is this service free to use?"}'
+```
+```
+Multi Agent using Langgraph
+curl --location 'http://localhost:8000/api/v1/weather/agent/langgraph' \
+--header 'Content-Type: application/json' \
+--data '{"query": "What is the weather forecast for Delhi today and the upcoming days? Is this service free to use?"}'
 ```
 
 Example response:
 
 ```json
 {
-  "status": "success",
-  "message": "The current weather in Delhi is ...",
-  "isCached": false
-}
+    "status": "success",
+    "message": "The weather forecast for Delhi today and the upcoming days is as follows:
+
+            - October 17, 2026: Max Temperature 34°C, Min Temperature 26°C, Sunny
+            - October 18, 2026: Max Temperature 34°C, Min Temperature 26°C, Sunny
+            - October 19, 2026: Max Temperature 35°C, Min Temperature 26°C, Sunny
+            
+            Regarding the service usage, the Weather Demo application can be developed and demonstrated for free using the publicly accessible `wttr.in` service. However, while the weather-data request itself may not require a conventional API subscription, there could still be infrastructure costs associated with your particular application setup.
+            "
+  }
 ```
 
 Agent report cache keys include the provider and a normalized query. Query text
