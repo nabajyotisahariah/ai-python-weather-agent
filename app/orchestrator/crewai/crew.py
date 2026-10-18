@@ -33,9 +33,11 @@ async def run_weather_orchestrator(query: str, session_id: str | None = None, us
 
     # Log the cached context for debugging
     #{"role": "user", "content": "I am from the city Noida?"}
-    #{"role": "assistant", "content": "The current weather in Noida is 33\u00b0C with a feels-like temperature of 30\u00b0C. The humidity level is 20%. The weather condition is a dust storm, and the wind s
+    #{"role": "assistant", "content": "The current weather in Noida is 33C with a feels-like temperature of 30\u00b0C. The humidity level is 20%. The weather condition is a dust storm, and the wind speed is 9 km/h."}
     #{"role": "user", "content": "Will it raid today?"}
-    #{"role": "assistant", "content": "The weather forecast for Noida today indicates a dust storm with a maximum temperature of 
+    #{"role": "assistant", "content": "The weather forecast for Noida today indicates a dust storm with a maximum temperature of 33\u00b0C and a minimum temperature of 25\u00b0C. There is no indication of rain today."}
+    #{"role": "user", "content": "I am moved to Delhi"
+    #{"role": "assistant", "content": "Since you have moved to Delhi, here is the weather forecast for Delhi for the next three days:\n\n- October 18, 2026: Maximum temperature 33\u00b0C, minimum temperature 25\u00b0C, sunny.\n- October 19, 2026: Maximum temperature 34\u00b0C, minimum temperature 25\u00b0C, sunny.\n- October 20, 2026: Maximum temperature 34\u00b0C, minimum temperature 26\u00b0C, sunny.\n\nIf you need any specific weather information or assistance for Delhi, feel free to ask!"}
     
     print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
     
