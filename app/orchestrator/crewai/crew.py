@@ -30,21 +30,21 @@ async def run_weather_orchestrator(query: str, session_id: str | None = None, us
 
     # Get cached context if available
     cached_context = await redis_context.get_history(session_id, user_id)
-     #[{'role': 'user', 'content': {'session_id': 'abc6612', 'user_id': 'default_user', 'last_query': 'Shall I need umbrella tomorrow?', 'last_result': "Tomorrow's weather is forecasted to be cloudy with a maximum temperature of 16°C and a minimum of 2°C. There is no indication of rain, so you likely do not need to take an umbrella."}}, {'role': 'user', 'content': {'session_id': 'abc6612', 'user_id': 'default_user', 'last_query': 'What is the temp of Noida', 'last_result': 'The current temperature in Noida is 33°C, with a feels-like temperature of 30°C. The weather condition is a dust storm, humidity is at 20%, and the wind speed is 9 km/h.'}}, {'role': 'user', 'content': {'session_id': 'abc6612', 'user_id': 'default_user', 'last_query': 'I am from which City?', 'last_result': "I don't have information about your city. Could you please tell me which city you are from?"}}]
 
-    cache_context_data : list[str] = [msg["content"]["last_result"] for msg in cached_context] if cached_context else []
-    # Option 1: Join with newline
-    cache_context_text: str = "\n".join(cache_context_data)
-
-    #print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
-    print(f"Cache context text for session_id {session_id} and user_id {user_id}: {cache_context_text}")
-
+    # Log the cached context for debugging
+    #{"role": "user", "content": "I am from the city Noida?"}
+    #{"role": "assistant", "content": "The current weather in Noida is 33\u00b0C with a feels-like temperature of 30\u00b0C. The humidity level is 20%. The weather condition is a dust storm, and the wind s
+    #{"role": "user", "content": "Will it raid today?"}
+    #{"role": "assistant", "content": "The weather forecast for Noida today indicates a dust storm with a maximum temperature of 
+    
+    print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
+    
     agent: Agent = create_weather_orchestrator()
 
     task: Task = create_weather_task(
         agent=agent,
         query=query,
-        cached_context=cache_context_text if cache_context_text else None,
+        cached_context=cached_context if cached_context else None,
     )
 
     crew = Crew(
@@ -61,14 +61,8 @@ async def run_weather_orchestrator(query: str, session_id: str | None = None, us
     await redis_cache.set(cache_key, {"raw": result.raw}, ex=3600)
 
     # Update the context with the latest query and result
-    await redis_context.add_message(
-                session_id, 
-                user_id, 
-                "user", 
-                {
-                    "session_id": session_id, "user_id": user_id, "last_query": query, 
-                    "last_result": result.raw
-                 }
-            )   
+    
+    await redis_context.add_message(session_id,  user_id,  "user", query)  
+    await redis_context.add_message(session_id,  user_id,  "assistant", result.raw)   
 
     return [result.raw, cache_key, False]
