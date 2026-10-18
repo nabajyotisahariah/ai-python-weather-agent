@@ -3,7 +3,7 @@
 from crewai import Task
 
 
-def create_weather_task(agent, query: str, conversation_history: list) -> Task:
+def create_weather_task(agent, query: str, cached_context: list) -> Task:
 
     return Task(
         description=f"""
@@ -12,7 +12,7 @@ def create_weather_task(agent, query: str, conversation_history: list) -> Task:
         {query}
 
          Recent conversation:
-        {conversation_history}
+        {cached_context}
 
         Determine which weather or FAQ capabilities are required.
 

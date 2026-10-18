@@ -22,18 +22,14 @@ class WeatherAgentService(WeatherAgentInterface):
         self.cache = AsyncRedisCache()
 
     @staticmethod
-    def _report_cache_key(query: str, provider: AgentProvider) -> str:
+    def get_cache_key( provider: AgentProvider, query: str, session_id: str | None = None, user_id: str | None = None ) -> str:
         normalized_query = re.sub(r"[^a-z0-9]+", "-", query.casefold()).strip("-")
-        return f"weather:agent:{provider}:{normalized_query}"
+        return f"weather:agent:{provider}:{normalized_query}:{session_id}:{user_id}"
 
     async def _get_cached_report(
         self,
-        provider: AgentProvider,
-        query: str,
-        session_id: str | None = None,
-        user_id: str | None = None
+       cache_key : str,
     ) -> AgentResponse | None:
-        cache_key = self._report_cache_key(query+str(session_id)+str(user_id), provider)
         cached_report = await self.cache.get(cache_key)
         if cached_report and "status" in cached_report and "message" in cached_report:
             return AgentResponse(
@@ -45,43 +41,29 @@ class WeatherAgentService(WeatherAgentInterface):
             )
         return None
 
-    async def _cache_report(
+    async def set_cache_report(
         self,
-        query: str,
+        cache_key: str,
         report: AgentResponse,
-        provider: AgentProvider,
     ) -> None:
         await self.cache.set(
-            self._report_cache_key(query, provider),
+            cache_key,
             report.model_dump(),
             ex=3600,
         )
 
     async def process_weather_query(self, query: str, session_id: str, user_id: str) -> AgentResponse:
         """Process a natural language weather query using the CrewAI agent."""
-        query_str = validate_query(query)
-        logger.info("Executing process_weather_query with query: %s", query_str, extra={"session_id": session_id, "user_id": user_id})
-        
-        # Check cache
-        cached_report = await self._get_cached_report("crewai", query_str, session_id=session_id, user_id=user_id)
-        if cached_report:
-            logger.info("Cache hit for query: %s", query_str)
-            return cached_report
 
-        # Call orchestrator if not cached
-        logger.info("Cache miss for query: %s. Fetching from orchestrator.", query_str)
-        response = await run_weather_orchestrator(query_str, session_id=session_id, user_id=user_id)
+        [response, cache_key, is_cached] = await run_weather_orchestrator(query, session_id=session_id, user_id=user_id)
         
         report = AgentResponse(
             status="success",
             message=str(response),
             data=None,
-            isCached=False,
-            cacheKey=self._report_cache_key(query_str, "crewai"),
+            isCached=is_cached,
+            cacheKey=cache_key,
         )
-        
-        # Cache the new report
-        await self._cache_report(query_str, report, "crewai")
         
         return report
 
