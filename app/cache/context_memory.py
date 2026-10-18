@@ -39,35 +39,6 @@ class ContextMemory:
         )
         self._initialized = True
 
-    def _context_key(self, session_id: str, user_id: str) -> str:
-        return f"weather:context:{session_id}:{user_id}"
-
-    async def get_context(
-        self,
-        session_id: str,
-        user_id: str,
-    ) -> dict:
-        data = await self.redis.get(
-            self._context_key(session_id, user_id)
-        )
-        return json.loads(data) if data else {}
-
-    async def update_context(
-        self,
-        session_id: str,
-        user_id: str,
-        updates: dict,
-    ) -> dict:
-        context = await self.get_context(session_id, user_id)
-        context.update(updates)
-
-        await self.redis.set(
-            self._context_key(session_id, user_id),
-            json.dumps(context),
-            ex=86400,
-        )
-        return context
-
     async def add_message(
         self,
         session_id: str,

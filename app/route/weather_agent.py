@@ -32,10 +32,10 @@ async def post_weather_forecast_route(
         query_val = validate_query(query_val)
 
         #"weather:context:{user_id}:{session_id}"
-        user_id = "default_user"  # Replace with actual user ID if available
-        session_id = request.session_id if request.session_id is not None else None # Replace with actual session ID if available
+        user_id = "default_user".lower()  # Replace with actual user ID if available
+        session_id = request.session_id.lower() if request.session_id is not None else None # Replace with actual session ID if available
 
-        if(session_id is None or len(session_id) <= 6):
+        if(session_id is None or len(session_id) <= 5):
             logger.warning("User ID or Session ID is None or invalid. Using default values.")
             raise HTTPException("Session ID is None or invalid")
     
