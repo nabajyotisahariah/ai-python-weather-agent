@@ -1,5 +1,5 @@
 from typing import Literal
-
+from enum import Enum
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -35,12 +35,23 @@ class ForecastDay(BaseModel):
     uv_index: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     unavailable_fields: list[str] = Field(default_factory=list)
 
+class Status(str, Enum):
+    SUCCESS = "success"
+    FAIL = "fail"
+    ERROR = "error"
+    PENDING_CLARIFICATION = "pending_clarification"
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    COMPLETED = "completed"
+    EXPIRED = "expired"
 
 class AgentResponse(BaseModel):
     
-    status: Literal["success", "fail", "error", "approved",
-                    "rejected","pending_clarification","pending_approval",
-                    ] = Field(default="success", description="Status of the response")    
+    #status: Literal["success", "fail", "error", "approved",
+    #                "rejected","pending_clarification","pending_approval",
+    #                ] = Field(default="success", description="Status of the response")  
+    status: Status = Field (default="success", description="Status of the response") 
     message: str | None = Field(default=None, max_length=2000)
     data: WeatherData | list[ForecastDay] | None = None
     isCached: bool = Field(

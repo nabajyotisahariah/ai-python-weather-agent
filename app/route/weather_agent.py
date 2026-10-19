@@ -6,7 +6,7 @@ from app.services.weather_service import (
 )
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.services.weather_agent_service import WeatherAgentService
-from app.schema.weather import AgentResponse, WeatherRequest
+from app.schema.weather import AgentResponse, WeatherRequest, Status
 from app.guardrails.input_guardrails import GuardrailViolation, validate_query
 from app.utils.response import generic_api_response
 import logging
@@ -43,14 +43,14 @@ async def post_weather_forecast_route(
         return await service.process_weather_query(query_val, session_id=session_id, user_id=user_id)
 
     except GuardrailViolation as exc:
-        return generic_api_response(400, "fail", str(exc))
+        return generic_api_response(400, Status.FAIL, str(exc))
     except CityNotFoundError as exc:
-        return generic_api_response(404, "fail", str(exc))
+        return generic_api_response(404, Status.FAIL, str(exc))
     except HTTPException as exc:
-        return generic_api_response(400, "fail", str(exc))
+        return generic_api_response(400, Status.FAIL, str(exc))
     except Exception as exc:
         logger.error("Unexpected error: %s", str(exc))
-        return generic_api_response(400, "fail", str(exc))
+        return generic_api_response(400, Status.FAIL, str(exc))
 
 
 @router.post("/weather/agent/langgraph", summary="Weather Agent (POST)", description="Returns the current Weather & forecast of the API using a JSON body.", tags=["System"], response_model_exclude_none=True)
@@ -68,11 +68,11 @@ async def post_weather_forecast_route_langgraph(
         return await service.process_weather_langgraph_query(query_val)
 
     except GuardrailViolation as exc:
-        return generic_api_response(400, "fail", str(exc))
+        return generic_api_response(400, Status.FAIL, str(exc))
     except CityNotFoundError as exc:
-        return generic_api_response(404, "fail", str(exc))
+        return generic_api_response(404, Status.FAIL, str(exc))
     except WeatherProviderError as exc:
-        return generic_api_response(502, "fail", str(exc))
+        return generic_api_response(502, Status.FAIL, str(exc))
 
 
 @router.post("/weather/agent/hitl", summary="Weather Agent (POST)", description="Returns the current Weather & forecast of the API using a JSON body.", tags=["System"], response_model_exclude_none=True)
@@ -98,11 +98,11 @@ async def post_weather_hitl_route(
         return await service.process_weather_hitl(query_val, session_id=session_id, user_id=user_id)
 
     except GuardrailViolation as exc:
-        return generic_api_response(400, "fail", str(exc))
+        return generic_api_response(400, Status.FAIL, str(exc))
     except CityNotFoundError as exc:
-        return generic_api_response(404, "fail", str(exc))
+        return generic_api_response(404, Status.FAIL, str(exc))
     except HTTPException as exc:
-        return generic_api_response(400, "fail", str(exc))
+        return generic_api_response(400, Status.FAIL, str(exc))
     except Exception as exc:
         logger.error("Unexpected error: %s", str(exc))
-        return generic_api_response(400, "fail", str(exc))
+        return generic_api_response(400, Status.FAIL, str(exc))

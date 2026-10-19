@@ -6,7 +6,7 @@ from app.config import settings
 from app.guardrails.input_guardrails import validate_query
 from app.orchestrator.crewai.crew import CrewAIOrchestrator
 from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
-from app.schema.weather import AgentResponse
+from app.schema.weather import AgentResponse, Status
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
 from app.guardrails.hitl_guardrails import needs_location_clarification, requires_action_approval
@@ -30,7 +30,7 @@ class WeatherAgentService(WeatherAgentInterface):
         [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator(query, session_id=session_id, user_id=user_id)
         
         report = AgentResponse(
-            status="success",
+            status=Status.SUCCESS,
             message=str(response),
             data=None,
             isCached=is_cached,
@@ -49,7 +49,7 @@ class WeatherAgentService(WeatherAgentInterface):
         [response, cache_key, is_cached] = await self.langgraph_orchestrator.run_weather_orchestrator_langgraph(query_str)
         
         report = AgentResponse(
-            status="success",
+            status=Status.SUCCESS,
             message=str(response),
             data=None,
             isCached=is_cached,
@@ -63,6 +63,7 @@ class WeatherAgentService(WeatherAgentInterface):
         """Process a natural language weather query using the CrewAI agent."""
 
         context = await self.crewai_orchestrator.get_user_context(session_id, user_id)
+        print("process_weather_hitl ",context)
         
         #Guardrail check over here
         # 1. Require human authorization for consequential actions.
@@ -71,8 +72,8 @@ class WeatherAgentService(WeatherAgentInterface):
             self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
 
             return AgentResponse(
-                    status="confirmation",
-                    message=str("This action requires human approval."),
+                    status=Status.PENDING_CLARIFICATION,
+                    message=str("This service is not available."),
                     data=None,
                     isCached=False,
                     cacheKey=None,
@@ -82,10 +83,10 @@ class WeatherAgentService(WeatherAgentInterface):
         # 2. Ask for missing information before invoking agents.
         if needs_location_clarification(query, context):
 
-            self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
+            await self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
             
             return AgentResponse(
-                    status="confirmation",
+                    status=Status.PENDING_CLARIFICATION,
                     message=str("I need your location to answer accurately."),
                     data=None,
                     isCached=False,
@@ -94,7 +95,7 @@ class WeatherAgentService(WeatherAgentInterface):
         [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator_hitl(query, session_id=session_id, user_id=user_id)
         
         report = AgentResponse(
-            status="success",
+            status=Status.SUCCESS,
             message=str(response),
             data=None,
             isCached=is_cached,

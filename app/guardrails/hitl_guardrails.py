@@ -25,7 +25,7 @@ def needs_location_clarification(
     cached_context: list | None,
 ) -> bool:
     query_lower = query.casefold()
-
+    
     weather_intent = any(
         word in query_lower
         for word in (
@@ -37,7 +37,11 @@ def needs_location_clarification(
         )
     )
 
+    print("needs_location_clarification query ",query," cached_context ",cached_context)
+    print(" weather_intent ",weather_intent)
+
     if not weather_intent:
+        print("====1")
         return False
 
     # Improve this check with structured user preferences
@@ -63,4 +67,5 @@ def needs_location_clarification(
         )
     )
 
+    print("has_location_context ",has_location_context," explicit_location ",explicit_location)
     return not has_location_context and not explicit_location
