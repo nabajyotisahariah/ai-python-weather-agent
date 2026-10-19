@@ -17,3 +17,4 @@ pytest
 redis
 langfuse==4.15.6
 mcp[cli]
+uuid4
