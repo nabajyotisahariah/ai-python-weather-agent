@@ -60,17 +60,22 @@ class LangGraphOrchestrator:
         query: str,
     ) -> tuple[str, str, bool]:
         """Run the LangGraph weather supervisor and return its response and cache key."""
+        
         query = validate_query(query)
+        #print(f"Running LangGraph orchestrator for query: {query}")
+
         cache_key = (
             f"weather:orchestrator:langgraph:"
             f"{query.casefold().replace(' ', '_')}"
         )
         cached_result = await self.redis.get(cache_key)
+
         if cached_result and isinstance(cached_result.get("raw"), str):
             self.logger.info("LangGraph orchestrator cache hit for query: %s", query)
             return cached_result["raw"], cache_key, True
 
         self.logger.info("Executing run_weather_orchestrator_langgraph for query: %s", query)
+
         async with httpx.AsyncClient(
             timeout=settings.weather_timeout_seconds
         ) as http_client:
@@ -100,11 +105,8 @@ class LangGraphOrchestrator:
             )
 
         response = message_text(result["messages"][-1])
+
         await self.redis.set(cache_key, {"raw": response}, ex=3600)
+        
         return response, cache_key, False
 
-
-async def run_weather_orchestrator_langgraph(
-    query: str,
-) -> tuple[str, str, bool]:
-    return await LangGraphOrchestrator().run_weather_orchestrator_langgraph(query)
