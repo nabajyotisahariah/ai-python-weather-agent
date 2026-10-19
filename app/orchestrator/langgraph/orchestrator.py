@@ -22,13 +22,13 @@ from app.orchestrator.langgraph.weather_forecast_agent import (
 )
 from app.cache.redis_cache import AsyncRedisCache
 
-
 class LangGraphOrchestrator:
 
     def __init__(self):
         self.redis = AsyncRedisCache()
         self.logger = logging.getLogger(__name__)
 
+    @staticmethod
     def _build_orchestrator_graph(llm: ChatOpenAI):
         delegation_tools: list[BaseTool] = [
             build_current_weather_delegate(llm),
@@ -55,8 +55,10 @@ class LangGraphOrchestrator:
         graph.add_edge("specialists", "orchestrator")
         return graph.compile()
 
-
-    async def run_weather_orchestrator_langgraph(self, query: str) -> tuple[str, str]:
+    async def run_weather_orchestrator_langgraph(
+        self,
+        query: str,
+    ) -> tuple[str, str, bool]:
         """Run the LangGraph weather supervisor and return its response and cache key."""
         query = validate_query(query)
         cache_key = (
@@ -64,9 +66,9 @@ class LangGraphOrchestrator:
             f"{query.casefold().replace(' ', '_')}"
         )
         cached_result = await self.redis.get(cache_key)
-        if cached_result and isinstance(cached_result, str):
+        if cached_result and isinstance(cached_result.get("raw"), str):
             self.logger.info("LangGraph orchestrator cache hit for query: %s", query)
-            return cached_result, cache_key, True
+            return cached_result["raw"], cache_key, True
 
         self.logger.info("Executing run_weather_orchestrator_langgraph for query: %s", query)
         async with httpx.AsyncClient(
@@ -98,5 +100,11 @@ class LangGraphOrchestrator:
             )
 
         response = message_text(result["messages"][-1])
-        await self.redis_cache.set(cache_key, response, ex=3600)
+        await self.redis.set(cache_key, {"raw": response}, ex=3600)
         return response, cache_key, False
+
+
+async def run_weather_orchestrator_langgraph(
+    query: str,
+) -> tuple[str, str, bool]:
+    return await LangGraphOrchestrator().run_weather_orchestrator_langgraph(query)

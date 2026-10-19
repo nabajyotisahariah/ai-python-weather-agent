@@ -5,7 +5,7 @@ import pytest
 from langchain_openai import ChatOpenAI
 
 from app.guardrails.input_guardrails import GuardrailViolation
-from app.orchestrator.langgraph import orchestrator
+from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
 from app.tools.langgraph import weather_tool
 from app.tools.langgraph.weather_tool import get_weather_forecast
 
@@ -13,7 +13,7 @@ from app.tools.langgraph.weather_tool import get_weather_forecast
 def test_orchestrator_graph_compiles_with_supervisor_and_specialists() -> None:
     llm = ChatOpenAI(api_key="test-key", model="gpt-4o-mini", temperature=0)
 
-    graph = orchestrator._build_orchestrator_graph(llm)
+    graph = LangGraphOrchestrator._build_orchestrator_graph(llm)
 
     assert "orchestrator" in graph.nodes
     assert "specialists" in graph.nodes
@@ -22,30 +22,37 @@ def test_orchestrator_graph_compiles_with_supervisor_and_specialists() -> None:
 def test_langgraph_orchestrator_returns_cached_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    weather_orchestrator = LangGraphOrchestrator()
     monkeypatch.setattr(
-        orchestrator.redis_cache,
+        weather_orchestrator.redis,
         "get",
         AsyncMock(return_value={"raw": "Cached forecast"}),
     )
 
     result = asyncio.run(
-        orchestrator.run_weather_orchestrator_langgraph("Weather forecast for Delhi")
+        weather_orchestrator.run_weather_orchestrator_langgraph(
+            "Weather forecast for Delhi"
+        )
     )
 
     assert result == (
         "Cached forecast",
         "weather:orchestrator:langgraph:weather_forecast_for_delhi",
+        True,
     )
 
 
 def test_langgraph_orchestrator_rejects_empty_query_before_cache_access(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    weather_orchestrator = LangGraphOrchestrator()
     cache_get = AsyncMock()
-    monkeypatch.setattr(orchestrator.redis_cache, "get", cache_get)
+    monkeypatch.setattr(weather_orchestrator.redis, "get", cache_get)
 
     with pytest.raises(GuardrailViolation, match="Query cannot be empty"):
-        asyncio.run(orchestrator.run_weather_orchestrator_langgraph(" "))
+        asyncio.run(
+            weather_orchestrator.run_weather_orchestrator_langgraph(" ")
+        )
 
     cache_get.assert_not_awaited()
 

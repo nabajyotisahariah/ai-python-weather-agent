@@ -390,37 +390,33 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
         }
 
 
-def test_weather_langgraph_agent_returns_agent_response(client: TestClient) -> None:
-    with (
-        patch(
-            "app.route.weather_agent.weather_agent_service._get_cached_report",
-            new=AsyncMock(return_value=None),
-        ),
-        patch(
-            "app.route.weather_agent.weather_agent_service._cache_report",
-            new=AsyncMock(),
-        ),
-        patch(
-            "app.services.weather_agent_service.run_weather_orchestrator_langgraph",
-            new=AsyncMock(
-                return_value=(
-                    "Mocked LangGraph Response",
-                    "weather:orchestrator:langgraph:delhi",
-                )
-            ),
-        ),
-    ):
-        response = client.post(
-            "/api/v1/weather/agent/langgraph",
-            json={"city": "Delhi"},
-        )
+def test_weather_langgraph_agent_returns_agent_response(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.route.weather_agent import weather_agent_service
+
+    monkeypatch.setattr(
+        weather_agent_service.langgraph_orchestrator.redis,
+        "get",
+        AsyncMock(return_value={"raw": "Mocked LangGraph Response"}),
+    )
+    response = client.post(
+        "/api/v1/weather/agent/langgraph",
+        json={
+            "query": "Shall I need umbrell?",
+            "session_id": "abc9292912",
+        },
+    )
 
     assert response.status_code == 200
     assert response.json() == {
         "status": "success",
         "message": "Mocked LangGraph Response",
-        "isCached": False,
-        "cacheKey": "weather:orchestrator:langgraph:delhi",
+        "isCached": True,
+        "cacheKey": (
+            "weather:orchestrator:langgraph:shall_i_need_umbrell?"
+        ),
     }
 
 
