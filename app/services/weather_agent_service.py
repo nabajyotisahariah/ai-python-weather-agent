@@ -81,16 +81,16 @@ class WeatherAgentService(WeatherAgentInterface):
 
         
         # 2. Ask for missing information before invoking agents.
-        if needs_location_clarification(query, context):
+        # if needs_location_clarification(query, context):
 
-            await self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
+        #     await self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
             
-            return AgentResponse(
-                    status=Status.PENDING_CLARIFICATION,
-                    message=str("I need your location to answer accurately."),
-                    data=None,
-                    isCached=False,
-                    cacheKey=None)
+        #     return AgentResponse(
+        #             status=Status.PENDING_CLARIFICATION,
+        #             message=str("I need your location to answer accurately."),
+        #             data=None,
+        #             isCached=False,
+        #             cacheKey=None)
     
         [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator_hitl(query, session_id=session_id, user_id=user_id)
         
