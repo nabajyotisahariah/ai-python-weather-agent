@@ -112,3 +112,9 @@ class CrewAIOrchestrator:
 
         return [result.raw, cache_key, False]
    
+    async def set_user_hitl(self, query: str, session_id: str | None = None, user_id: str | None = None) -> None:
+        await self.redis_context.add_message(session_id,  user_id,  "user", query)  
+        await self.redis_context.add_message(session_id,  user_id,  "assistant", "This action requires human approval.") 
+
+    async def get_user_context(self, session_id: str | None = None, user_id: str | None = None) -> list[str]:
+        return await self.redis_context.get_history(session_id, user_id)

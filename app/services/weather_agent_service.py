@@ -9,6 +9,7 @@ from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
 from app.schema.weather import AgentResponse
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
+from app.guardrails.hitl_guardrails import needs_location_clarification, requires_action_approval
 
 AgentProvider = Literal["crewai", "langgraph"]
 
@@ -61,6 +62,35 @@ class WeatherAgentService(WeatherAgentInterface):
     async def process_weather_hitl(self, query: str, session_id: str, user_id: str) -> AgentResponse:
         """Process a natural language weather query using the CrewAI agent."""
 
+        context = await self.crewai_orchestrator.get_user_context(session_id, user_id)
+        
+        #Guardrail check over here
+        # 1. Require human authorization for consequential actions.
+        if requires_action_approval(query):
+
+            self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
+
+            return AgentResponse(
+                    status="confirmation",
+                    message=str("This action requires human approval."),
+                    data=None,
+                    isCached=False,
+                    cacheKey=None,
+                )
+
+        
+        # 2. Ask for missing information before invoking agents.
+        if needs_location_clarification(query, context):
+
+            self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
+            
+            return AgentResponse(
+                    status="confirmation",
+                    message=str("I need your location to answer accurately."),
+                    data=None,
+                    isCached=False,
+                    cacheKey=None)
+    
         [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator_hitl(query, session_id=session_id, user_id=user_id)
         
         report = AgentResponse(

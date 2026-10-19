@@ -38,7 +38,9 @@ class ForecastDay(BaseModel):
 
 class AgentResponse(BaseModel):
     
-    status: Literal["success", "fail", "error"]
+    status: Literal["success", "fail", "error", "approved",
+                    "rejected","pending_clarification","pending_approval",
+                    ] = Field(default="success", description="Status of the response")    
     message: str | None = Field(default=None, max_length=2000)
     data: WeatherData | list[ForecastDay] | None = None
     isCached: bool = Field(
