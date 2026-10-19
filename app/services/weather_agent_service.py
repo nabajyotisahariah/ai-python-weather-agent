@@ -9,6 +9,7 @@ from app.orchestrator.langgraph.orchestrator import run_weather_orchestrator_lan
 from app.schema.weather import AgentResponse
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
+from app.cache.context_memory import ContextMemory
 
 logger = logging.getLogger(__name__)
 AgentProvider = Literal["crewai", "langgraph"]
@@ -20,6 +21,16 @@ class WeatherAgentService(WeatherAgentInterface):
 
     def __init__(self) -> None:
         self.cache = AsyncRedisCache()
+        self.context_memory = ContextMemory()
+
+    async def get_context(
+        self,
+        session_id: str,
+        user_id: str,
+    ) -> list[dict[str, str]]:
+        if self.context_memory.redis is None:
+            return []
+        return await self.context_memory.get_history(session_id, user_id)
 
     @staticmethod
     def get_cache_key( provider: AgentProvider, query: str, session_id: str | None = None, user_id: str | None = None ) -> str:
@@ -66,6 +77,22 @@ class WeatherAgentService(WeatherAgentInterface):
         )
         
         return report
+
+    async def process_weather_query_hitl(self, query: str, session_id: str, user_id: str) -> AgentResponse:
+            """Process a natural language weather query using the CrewAI agent."""
+
+            [response, cache_key, is_cached] = await run_weather_orchestrator(query, session_id=session_id, user_id=user_id)
+            
+            # report = AgentResponse(
+            #     status="success",
+            #     message=str(response),
+            #     data=None,
+            #     isCached=is_cached,
+            #     cacheKey=cache_key,
+            # )
+            
+            return response
+
 
     async def process_weather_langgraph_query(self, query: str) -> AgentResponse:
         """Process a natural language weather query using LangGraph specialist agents."""
