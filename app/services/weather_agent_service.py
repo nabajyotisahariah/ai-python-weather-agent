@@ -56,3 +56,19 @@ class WeatherAgentService(WeatherAgentInterface):
         )
     
         return report
+
+    
+    async def process_weather_hitl(self, query: str, session_id: str, user_id: str) -> AgentResponse:
+        """Process a natural language weather query using the CrewAI agent."""
+
+        [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator_hitl(query, session_id=session_id, user_id=user_id)
+        
+        report = AgentResponse(
+            status="success",
+            message=str(response),
+            data=None,
+            isCached=is_cached,
+            cacheKey=cache_key,
+        )
+        
+        return report
