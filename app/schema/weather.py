@@ -1,5 +1,12 @@
 from enum import Enum
 from pydantic import BaseModel, Field
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class ActionIntent:
+    action: str
+    target: str | None = None
+
 
 class WeatherRequest(BaseModel):
     city: str | None = Field(None, description="City to get weather for")
