@@ -1,16 +1,14 @@
 import logging
-import re
 from typing import Literal
-
 from app.config import settings
 from app.guardrails.input_guardrails import validate_query
-from app.orchestrator.crewai.crew import run_weather_orchestrator
-from app.orchestrator.langgraph.orchestrator import run_weather_orchestrator_langgraph
-from app.schema.weather import AgentResponse
+from app.orchestrator.crewai.crew import CrewAIOrchestrator
+from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
+from app.schema.weather import AgentResponse, Status
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
+from app.guardrails.hitl_guardrails import detect_consequential_action, needs_location_clarification
 
-logger = logging.getLogger(__name__)
 AgentProvider = Literal["crewai", "langgraph"]
 
 class WeatherAgentService(WeatherAgentInterface):
@@ -20,93 +18,114 @@ class WeatherAgentService(WeatherAgentInterface):
 
     def __init__(self) -> None:
         self.cache = AsyncRedisCache()
+        self.logger = logging.getLogger(__name__)
+        self.crewai_orchestrator = CrewAIOrchestrator()
+        self.langgraph_orchestrator = LangGraphOrchestrator()
 
-    @staticmethod
-    def _report_cache_key(query: str, provider: AgentProvider) -> str:
-        normalized_query = re.sub(r"[^a-z0-9]+", "-", query.casefold()).strip("-")
-        return f"weather:agent:{provider}:{normalized_query}"
-
-    async def _get_cached_report(
-        self,
-        query: str,
-        provider: AgentProvider,
-    ) -> AgentResponse | None:
-        cache_key = self._report_cache_key(query, provider)
-        cached_report = await self.cache.get(cache_key)
-        if cached_report and "status" in cached_report and "message" in cached_report:
-            return AgentResponse(
-                status=cached_report["status"],
-                message=str(cached_report["message"]),
-                data=cached_report.get("data"),
-                isCached=True,
-                cacheKey=cached_report.get("cacheKey", cache_key),
-            )
-        return None
-
-    async def _cache_report(
-        self,
-        query: str,
-        report: AgentResponse,
-        provider: AgentProvider,
-    ) -> None:
-        await self.cache.set(
-            self._report_cache_key(query, provider),
-            report.model_dump(),
-            ex=3600,
-        )
-
-    async def process_weather_query(self, query: str) -> AgentResponse:
+    async def process_weather_query(self, query: str, session_id: str, user_id: str) -> AgentResponse:
         """Process a natural language weather query using the CrewAI agent."""
-        query_str = validate_query(query)
-        logger.info("Executing process_weather_query with query: %s", query_str)
-        
-        # Check cache
-        cached_report = await self._get_cached_report(query_str, "crewai")
-        if cached_report:
-            logger.info("Cache hit for query: %s", query_str)
-            return cached_report
 
-        # Call orchestrator if not cached
-        logger.info("Cache miss for query: %s. Fetching from orchestrator.", query_str)
-        response = await run_weather_orchestrator(query_str)
+        [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator(query, session_id=session_id, user_id=user_id)
         
         report = AgentResponse(
-            status="success",
+            status=Status.SUCCESS,
             message=str(response),
             data=None,
-            isCached=False,
-            cacheKey=self._report_cache_key(query_str, "crewai"),
+            isCached=is_cached,
+            cacheKey=cache_key,
         )
-        
-        # Cache the new report
-        await self._cache_report(query_str, report, "crewai")
         
         return report
 
     async def process_weather_langgraph_query(self, query: str) -> AgentResponse:
         """Process a natural language weather query using LangGraph specialist agents."""
         query_str = validate_query(query)
-        logger.info("Executing process_weather_langgraph_query with query: %s", query_str)
+        self.logger.info("Executing process_weather_langgraph_query with query: %s", query_str)
         
-        # Check cache
-        cached_report = await self._get_cached_report(query_str, "langgraph")
-        if cached_report:
-            logger.info("Cache hit for query: %s", query_str)
-            return cached_report
-
         # Call orchestrator if not cached
-        logger.info("Cache miss for query: %s. Fetching from orchestrator.", query_str)
-        response, cache_key = await run_weather_orchestrator_langgraph(query_str)
+        self.logger.info("Cache miss for query: %s. Fetching from orchestrator.", query_str)
+        [response, cache_key, is_cached] = await self.langgraph_orchestrator.run_weather_orchestrator_langgraph(query_str)
         
         report = AgentResponse(
-            status="success",
+            status=Status.SUCCESS,
             message=str(response),
             data=None,
-            isCached=False,
+            isCached=is_cached,
             cacheKey=cache_key,
         )
-        
-        # Cache the new report
-        await self._cache_report(query_str, report, "langgraph")
-        
+    
         return report
+
+    async def process_weather_hitl(
+        self,
+        query: str,
+        session_id: str,
+        user_id: str,
+    ) -> AgentResponse:
+
+        query = validate_query(query)
+
+        #Caching Keys:
+        # weather:context:{session_id}:{user_id}    - Session & User specific context history
+        # weather:approval:{approval_id}            - Pending approval for consequential actions
+        # weather:location:{session_id}:{user_id}   - location information for the user (resolved city)
+
+        resolved_city = await self.crewai_orchestrator.get_resolved_city(
+            session_id,
+            user_id,
+        )
+        self.logger.info("process_weather_hitl resolved_city %s",resolved_city)
+
+        # 2. Check for consequential actions.
+        #Ex: Please broadcast an alert to all users about the weather warning
+        action_intent = detect_consequential_action(query)      #action: broadcast_alert or bulk_notification
+        self.logger.info("process_weather_hitl action_intent %s", action_intent)
+
+        if action_intent:
+            approval = await self.crewai_orchestrator.create_pending(
+                session_id=session_id,
+                user_id=user_id,
+                action=action_intent.action,
+                payload={"query": query},
+            )
+
+            return AgentResponse(
+                status=Status.PENDING_APPROVAL,
+                message="Human approval is required before this action can proceed.",
+                data={"approval_id": approval["approval_id"]},
+                isCached=False,
+                cacheKey=None,
+            )
+
+        # 3. Ask for missing location information.
+        #Ex: "What's the weather like?" or "Will it rain tomorrow?" or "Do I need an umbrella?"
+        #    "Should I wear a jacket"
+        if needs_location_clarification(query, resolved_city=resolved_city):
+
+            clarification_msg = "Which city would you like the weather forecast for?"
+            await self.crewai_orchestrator.set_user_hitl(query, clarification_msg, session_id, user_id)
+
+            return AgentResponse(
+                status=Status.PENDING_CLARIFICATION,
+                message=clarification_msg,
+                data=None,
+                isCached=False,
+                cacheKey=None,
+            )
+
+        # 4. Execute only after the checks have passed.
+        response, cache_key, is_cached = (
+            await self.crewai_orchestrator.run_weather_orchestrator_hitl(
+                query,
+                session_id=session_id,
+                user_id=user_id,
+            )
+        )
+
+        return AgentResponse(
+            status=Status.SUCCESS,
+            message=str(response),
+            data=None,
+            isCached=is_cached,
+            cacheKey=cache_key,
+        )

@@ -5,6 +5,7 @@ from app.guardrails.input_guardrails import (
     GuardrailViolation,
     validate_query,
 )
+from app.guardrails.hitl_guardrails import needs_location_clarification
 
 
 def test_validate_query_strips_surrounding_whitespace() -> None:
@@ -30,3 +31,24 @@ def test_validate_query_rejects_input_over_maximum_length() -> None:
 
     with pytest.raises(GuardrailViolation, match="Query exceeds the allowed length"):
         validate_query(query)
+
+
+def test_location_guardrail_accepts_city_in_query() -> None:
+    assert needs_location_clarification(
+        "What is the weather in Delhi?",
+        resolved_city=None,
+    ) is False
+
+
+def test_location_guardrail_uses_saved_city() -> None:
+    assert needs_location_clarification(
+        "Will it rain tomorrow?",
+        resolved_city="Delhi",
+    ) is False
+
+
+def test_location_guardrail_requests_city_when_missing() -> None:
+    assert needs_location_clarification(
+        "Will it rain tomorrow?",
+        resolved_city=None,
+    ) is True

@@ -390,38 +390,88 @@ def test_weather_agent_returns_agent_response(client: TestClient) -> None:
         }
 
 
-def test_weather_langgraph_agent_returns_agent_response(client: TestClient) -> None:
-    with (
-        patch(
-            "app.route.weather_agent.weather_agent_service._get_cached_report",
-            new=AsyncMock(return_value=None),
-        ),
-        patch(
-            "app.route.weather_agent.weather_agent_service._cache_report",
-            new=AsyncMock(),
-        ),
-        patch(
-            "app.services.weather_agent_service.run_weather_orchestrator_langgraph",
-            new=AsyncMock(
-                return_value=(
-                    "Mocked LangGraph Response",
-                    "weather:orchestrator:langgraph:delhi",
-                )
-            ),
-        ),
-    ):
-        response = client.post(
-            "/api/v1/weather/agent/langgraph",
-            json={"city": "Delhi"},
-        )
+def test_weather_langgraph_agent_returns_agent_response(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.route.weather_agent import weather_agent_service
+
+    monkeypatch.setattr(
+        weather_agent_service.langgraph_orchestrator.redis,
+        "get",
+        AsyncMock(return_value={"raw": "Mocked LangGraph Response"}),
+    )
+    response = client.post(
+        "/api/v1/weather/agent/langgraph",
+        json={
+            "query": "Shall I need umbrell?",
+            "session_id": "abc9292912",
+        },
+    )
 
     assert response.status_code == 200
     assert response.json() == {
         "status": "success",
         "message": "Mocked LangGraph Response",
-        "isCached": False,
-        "cacheKey": "weather:orchestrator:langgraph:delhi",
+        "isCached": True,
+        "cacheKey": (
+            "weather:orchestrator:langgraph:shall_i_need_umbrell?"
+        ),
     }
+
+
+def test_hitl_agent_returns_pending_approval_id(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.route.weather_agent import weather_agent_service
+
+    monkeypatch.setattr(
+        weather_agent_service.crewai_orchestrator,
+        "get_user_context",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        weather_agent_service.crewai_orchestrator,
+        "create_pending",
+        AsyncMock(return_value={"approval_id": "appr_test"}),
+    )
+
+    response = client.post(
+        "/api/v1/weather/agent/hitl",
+        json={
+            "query": "Please broadcast an alert to all users about the weather warning",
+            "session_id": "testtest7",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "pending_approval",
+        "message": "Human approval is required before this action can proceed.",
+        "data": {"approval_id": "appr_test"},
+        "isCached": False,
+    }
+
+
+def test_weather_tool_reports_the_city_used(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.orchestrator.crewai import tools as crewai_tools
+
+    resolved_cities: list[str] = []
+    monkeypatch.setattr(
+        crewai_tools,
+        "run_weather_agent",
+        lambda city: f"Weather for {city}",
+    )
+
+    weather_tool = crewai_tools.create_weather_tools(
+        resolved_cities.append
+    )[0]
+
+    assert weather_tool.run(city="Delhi") == "Weather for Delhi"
+    assert resolved_cities == ["Delhi"]
 
 
 def test_agent_providers_use_separate_report_cache_keys(
