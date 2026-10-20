@@ -81,9 +81,10 @@ async def post_weather_hitl_route(
     service: WeatherAgentInterface = Depends(get_weather_agent_service),
 ) -> AgentResponse:
     """Return the current weather & weather forecast for a city using a POST request."""
-    query_val = request.query if request.query is not None else request.city
     
     try:
+        query_val = request.query
+
         query_val = validate_query(query_val)
 
         #"weather:context:{user_id}:{session_id}"

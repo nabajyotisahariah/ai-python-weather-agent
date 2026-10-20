@@ -78,8 +78,6 @@ def needs_location_clarification(
         term in query_lower for term in weather_terms
     )
 
-    print("needs_location_clarification ",query_lower," = ",weather_terms," -- ",is_weather_query)
-
     if not is_weather_query:
         return False
 
@@ -88,12 +86,10 @@ def needs_location_clarification(
         query_lower,
     )
 
-    print("needs_location_clarification location_match ",location_match)
     if location_match is None:
         return True
 
     location = location_match.group(1).strip()
-    print("needs_location_clarification location ",location)
 
     if location in {
         "the morning",
@@ -108,7 +104,6 @@ def needs_location_clarification(
         "tomorrow",
         "tonight",
     }:
-        print("needs_location_clarification.11 location ",location)
         return True
 
     return False
