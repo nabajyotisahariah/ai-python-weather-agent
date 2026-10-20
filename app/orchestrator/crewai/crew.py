@@ -2,7 +2,9 @@
 
 import logging
 import re
-import re
+import json
+import secrets
+from datetime import datetime, timedelta, timezone
 from urllib import response
 from crewai import Crew, Process, Agent, Task
 from app.orchestrator.crewai.agents import create_weather_orchestrator
@@ -15,6 +17,7 @@ from app.cache.context_memory import ContextMemory
 class CrewAIOrchestrator:
 
     def __init__(self):
+        self.ttl_seconds = 3600  # Set TTL to 1 hour
         self.redis = AsyncRedisCache()
         self.redis_context = ContextMemory()
         self.logger = logging.getLogger(__name__)
@@ -141,3 +144,34 @@ class CrewAIOrchestrator:
 
     async def get_user_context(self, session_id: str | None = None, user_id: str | None = None) -> list[str]:
         return await self.redis_context.get_history(session_id, user_id)
+
+
+    async def create_pending(self, session_id: str, user_id: str, action: str, payload: dict,) -> dict:
+
+        now = datetime.now(timezone.utc)
+
+        approval_id = f"appr_{secrets.token_urlsafe(16)}"
+
+        approval = {
+            "approval_id": approval_id,
+            "session_id": session_id,
+            "requester_id": user_id,
+            "action": action,
+            "payload": payload,
+            "status": "PENDING",
+            "created_at": now.isoformat(),
+            "expires_at": (
+                now + timedelta(seconds=self.ttl_seconds)
+            ).isoformat(),
+            "idempotency_key": approval_id,
+        }
+
+        redis_key = f"weather:approval:{approval_id}"
+
+        await self.redis.set(
+            redis_key,
+            json.dumps(approval),
+            ex=self.ttl_seconds
+        )
+
+        return approval

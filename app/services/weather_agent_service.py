@@ -6,7 +6,7 @@ from app.config import settings
 from app.guardrails.input_guardrails import validate_query
 from app.orchestrator.crewai.crew import CrewAIOrchestrator
 from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
-from app.schema.weather import AgentResponse, Status
+from app.schema.weather import AgentResponse, Status, detect_consequential_action
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
 from app.guardrails.hitl_guardrails import needs_location_clarification, requires_action_approval
@@ -59,7 +59,7 @@ class WeatherAgentService(WeatherAgentInterface):
         return report
 
     
-    async def process_weather_hitl(self, query: str, session_id: str, user_id: str) -> AgentResponse:
+    async def process_weather_hitl1(self, query: str, session_id: str, user_id: str) -> AgentResponse:
         """Process a natural language weather query using the CrewAI agent."""
 
         context = await self.crewai_orchestrator.get_user_context(session_id, user_id)
@@ -103,3 +103,76 @@ class WeatherAgentService(WeatherAgentInterface):
         )
         
         return report
+
+
+    async def process_weather_hitl(
+        self,
+        query: str,
+        session_id: str,
+        user_id: str,
+    ) -> AgentResponse:
+
+        query = validate_query(query)
+
+        # 1. Load structured session state and user context.
+        context = await self.crewai_orchestrator.get_user_context(
+            session_id, user_id
+        )
+        print("process_weather_hitl context ",context)
+
+        # Prefer a structured field, not a text scan of history.
+        #resolved_city = context.get("resolved_city")
+
+        # 2. Check for consequential actions.
+        #Ex: Please broadcast an alert to all users about the weather warning
+        action_intent = detect_consequential_action(query)
+        print("process_weather_hitl action_intent ",action_intent)
+
+        if action_intent:
+            approval = await self.crewai_orchestrator.create_pending(
+                session_id=session_id,
+                user_id=user_id,
+                action=action_intent.action,
+                payload={"query": query},
+            )
+
+            print("process_weather_hitl approval ",approval)
+
+            return AgentResponse(
+                status=Status.PENDING_APPROVAL,
+                message="Human approval is required before this action can proceed.",
+                data={"approval_id": approval.approval_id},
+                isCached=False,
+                cacheKey=None,
+            )
+
+        # 3. Ask for missing location information.
+        # if needs_location_clarification(query, resolved_city):
+        #     await self.crewai_orchestrator.set_user_hitl(
+        #         query, session_id, user_id
+        #     )
+
+        #     return AgentResponse(
+        #         status=Status.PENDING_CLARIFICATION,
+        #         message="Which city would you like the weather forecast for?",
+        #         data=None,
+        #         isCached=False,
+        #         cacheKey=None,
+        #     )
+
+        # 4. Execute only after the checks have passed.
+        response, cache_key, is_cached = (
+            await self.crewai_orchestrator.run_weather_orchestrator_hitl(
+                query,
+                session_id=session_id,
+                user_id=user_id,
+            )
+        )
+
+        return AgentResponse(
+            status=Status.SUCCESS,
+            message=str(response),
+            data=None,
+            isCached=is_cached,
+            cacheKey=cache_key,
+        )
