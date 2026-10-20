@@ -30,8 +30,10 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Weather forecast up to 3 days by city
 - AI weather summaries through four agent integrations
 - **New:** AI Agent capability resolving application, subscription, and pricing FAQs via an embedded vector database similarity search over `weather.txt`.
+- Human-in-the-loop (HITL) weather requests that ask for a missing city and flag consequential bulk-notification requests for approval
 - **Model Context Protocol (FastMCP)** server capability
 - Redis caching for weather data and generated reports
+- Redis-backed session context for HITL clarification and pending approval records
 - Health-check endpoint
 - Pydantic request and response validation (null fields are excluded from JSON responses)
 - Provider-backed output guardrails for current weather and forecast reports, including explicit missing-field disclosures
@@ -149,7 +151,7 @@ Stop Redis when it is no longer needed:
 docker compose down
 ```
 
-The API can also run without Redis. In that case, requests bypass the cache and call the upstream weather or agent provider directly.
+The API can also run without Redis. In that case, requests bypass the cache and call the upstream weather or agent provider directly. The HITL endpoint depends on Redis to store session context and pending approval records, so enable Redis when using that endpoint.
 
 The application shares one `AsyncRedisCache` Singleton instance across its services and
 orchestrators. It creates the Redis client once when caching is enabled; when
@@ -334,9 +336,12 @@ POST /api/v1/weather/agent
 Content-Type: application/json
 
 {
-  "query": "What is the current weather and 3-day forecast for London?"
+  "query": "What is the current weather and 3-day forecast for London?",
+  "session_id": "weather-session-123"
 }
 ```
+
+The CrewAI endpoint requires a `session_id` of at least six characters. Reuse the same ID to retain session context.
 
 The legacy GET endpoints are also available and return similar schemas:
 
@@ -344,23 +349,40 @@ The legacy GET endpoints are also available and return similar schemas:
 GET /api/v1/weather/crewai?city=What is the weather of Delhi
 GET /api/v1/weather/langgraph?city=What is the temp of Delhi
 GET /api/v1/weather/autogen?city=tell me weather of Delhi
-GET /api/v1/weather/google-adk?city=weather of Delhi
 ```
 
-PowerShell example (POST):
+PowerShell example (CrewAI):
 
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"query":"What is the weather forecast for Delhi today and the upcoming days? Is this service free to use?","session_id":"weather-session-123"}'
 ```
-Multi Agent using CrewAI
-curl --location 'http://localhost:8000/api/v1/weather/agent' \
---header 'Content-Type: application/json' \
---data '{"query": "What is the weather forecast for Delhi today and the upcoming days? Is this service free to use?"}'
+
+PowerShell example (LangGraph):
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent/langgraph" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"query":"What is the weather forecast for Delhi today and the upcoming days? Is this service free to use?"}'
 ```
+
+### Human-in-the-loop requests
+
+Use `POST /api/v1/weather/agent/hitl` for requests that may need clarification or human approval. Configure Redis first and send a `query` plus a `session_id` with at least six characters. Reuse the session ID when answering a clarification:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent/hitl" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"query":"What is the weather like?","session_id":"weather-session-123"}'
 ```
-Multi Agent using Langgraph
-curl --location 'http://localhost:8000/api/v1/weather/agent/langgraph' \
---header 'Content-Type: application/json' \
---data '{"query": "What is the weather forecast for Delhi today and the upcoming days? Is this service free to use?"}'
-```
+
+When the query does not identify a city and the session has no previously resolved city, the response has `"status": "pending_clarification"` and asks which city to use. Send the city in a follow-up query using the same session ID.
+
+Requests to perform a recognized consequential action, such as broadcasting an alert to all users, return `"status": "pending_approval"` and a `data.approval_id`. The approval record expires after one hour. This API currently creates the pending record but does not expose an endpoint to approve, reject, or execute the action.
 
 Example response:
 
