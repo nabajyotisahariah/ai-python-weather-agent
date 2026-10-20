@@ -6,10 +6,10 @@ from app.config import settings
 from app.guardrails.input_guardrails import validate_query
 from app.orchestrator.crewai.crew import CrewAIOrchestrator
 from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
-from app.schema.weather import AgentResponse, Status, detect_consequential_action
+from app.schema.weather import AgentResponse, Status
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
-from app.guardrails.hitl_guardrails import needs_location_clarification, requires_action_approval
+from app.guardrails.hitl_guardrails import detect_consequential_action, needs_location_clarification, ActionIntent
 
 AgentProvider = Literal["crewai", "langgraph"]
 
@@ -147,18 +147,15 @@ class WeatherAgentService(WeatherAgentInterface):
             )
 
         # 3. Ask for missing location information.
-        # if needs_location_clarification(query, resolved_city):
-        #     await self.crewai_orchestrator.set_user_hitl(
-        #         query, session_id, user_id
-        #     )
-
-        #     return AgentResponse(
-        #         status=Status.PENDING_CLARIFICATION,
-        #         message="Which city would you like the weather forecast for?",
-        #         data=None,
-        #         isCached=False,
-        #         cacheKey=None,
-        #     )
+        #Ex: "What's the weather like?" or "Will it rain tomorrow?" or "Do I need an umbrella?"
+        if needs_location_clarification(query, resolved_city=None):
+            return AgentResponse(
+                status=Status.PENDING_CLARIFICATION,
+                message="Which city would you like the weather forecast for?",
+                data=None,
+                isCached=False,
+                cacheKey=None,
+            )
 
         # 4. Execute only after the checks have passed.
         response, cache_key, is_cached = (
