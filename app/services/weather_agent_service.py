@@ -1,7 +1,5 @@
 import logging
-import re
 from typing import Literal
-
 from app.config import settings
 from app.guardrails.input_guardrails import validate_query
 from app.orchestrator.crewai.crew import CrewAIOrchestrator
@@ -9,7 +7,7 @@ from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
 from app.schema.weather import AgentResponse, Status
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
-from app.guardrails.hitl_guardrails import detect_consequential_action, needs_location_clarification, ActionIntent
+from app.guardrails.hitl_guardrails import detect_consequential_action, needs_location_clarification
 
 AgentProvider = Literal["crewai", "langgraph"]
 
@@ -58,53 +56,6 @@ class WeatherAgentService(WeatherAgentInterface):
     
         return report
 
-    
-    async def process_weather_hitl1(self, query: str, session_id: str, user_id: str) -> AgentResponse:
-        """Process a natural language weather query using the CrewAI agent."""
-
-        context = await self.crewai_orchestrator.get_user_context(session_id, user_id)
-        print("process_weather_hitl ",context)
-        
-        #Guardrail check over here
-        # 1. Require human authorization for consequential actions.
-        if requires_action_approval(query):
-
-            self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
-
-            return AgentResponse(
-                    status=Status.PENDING_CLARIFICATION,
-                    message=str("This service is not available."),
-                    data=None,
-                    isCached=False,
-                    cacheKey=None,
-                )
-
-        
-        # 2. Ask for missing information before invoking agents.
-        # if needs_location_clarification(query, context):
-
-        #     await self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
-            
-        #     return AgentResponse(
-        #             status=Status.PENDING_CLARIFICATION,
-        #             message=str("I need your location to answer accurately."),
-        #             data=None,
-        #             isCached=False,
-        #             cacheKey=None)
-    
-        [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator_hitl(query, session_id=session_id, user_id=user_id)
-        
-        report = AgentResponse(
-            status=Status.SUCCESS,
-            message=str(response),
-            data=None,
-            isCached=is_cached,
-            cacheKey=cache_key,
-        )
-        
-        return report
-
-
     async def process_weather_hitl(
         self,
         query: str,
@@ -123,22 +74,20 @@ class WeatherAgentService(WeatherAgentInterface):
             session_id,
             user_id,
         )
+        self.logger.info("process_weather_hitl resolved_city %s",resolved_city)
 
         # 2. Check for consequential actions.
         #Ex: Please broadcast an alert to all users about the weather warning
-        action_intent = detect_consequential_action(query)
-        print("process_weather_hitl action_intent ",action_intent, " resolved_city ",resolved_city)
+        action_intent = detect_consequential_action(query)      #action: broadcast_alert or bulk_notification
+        self.logger.info("process_weather_hitl action_intent %s", action_intent)
 
         if action_intent:
-            
             approval = await self.crewai_orchestrator.create_pending(
                 session_id=session_id,
                 user_id=user_id,
                 action=action_intent.action,
                 payload={"query": query},
             )
-
-            print("process_weather_hitl approval ",approval)
 
             return AgentResponse(
                 status=Status.PENDING_APPROVAL,
@@ -152,10 +101,9 @@ class WeatherAgentService(WeatherAgentInterface):
         #Ex: "What's the weather like?" or "Will it rain tomorrow?" or "Do I need an umbrella?"
         #    "Should I wear a jacket"
         if needs_location_clarification(query, resolved_city=resolved_city):
+
             clarification_msg = "Which city would you like the weather forecast for?"
-            
-            await self.crewai_orchestrator.redis_context.add_message(session_id, user_id, "user", query)
-            await self.crewai_orchestrator.redis_context.add_message(session_id, user_id, "assistant", clarification_msg)
+            await self.crewai_orchestrator.set_user_hitl(query, clarification_msg, session_id, user_id)
 
             return AgentResponse(
                 status=Status.PENDING_CLARIFICATION,

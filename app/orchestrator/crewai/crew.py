@@ -124,39 +124,27 @@ class CrewAIOrchestrator:
                 resolved_cities[-1],
             )
 
-        # Determine if result has city weather or not? If not, don't cache & ask for location clarification. 
-        # We can use the needs_location_clarification function from guardrails/hitl_guardrails.py
-
-        response = str(result.raw or "")
-        response_lower = response.casefold()
-
-        has_temperature = bool(
-            re.search(r"-?\d+(?:\.\d+)?\s*°[CF]\b", response)
-        )
-
-        # weather_keywords = ("weather", "forecast", "temperature", "faq", "rain", "snow", "sunny", "cloudy", "storm", "windy", "humidity")
-
-        # has_weather_keyword = any(
-        #     keyword in response_lower
-        #     for keyword in weather_keywords
+        #response = str(result.raw or "")        
+        # has_temperature = bool(
+        #     re.search(r"-?\d+(?:\.\d+)?\s*°[CF]\b", response)
         # )
 
         # Determine whether the result contains a recognizable
         # weather-related response.
-        if has_temperature:# or has_weather_keyword:
-                # Cache the result
-            await self.redis.set(cache_key,  result.raw, ex=3600)
+        #if has_temperature:# or has_weather_keyword:
+         
+        # Cache the result
+        await self.redis.set(cache_key,  result.raw, ex=3600)
 
-            # Update the context with the latest query and result
-            
-            await self.redis_context.add_message(session_id,  user_id,  "user", query)  
-            await self.redis_context.add_message(session_id,  user_id,  "assistant", result.raw)   
+        # Update the context with the latest query and result
+        await self.redis_context.add_message(session_id,  user_id,  "user", query)  
+        await self.redis_context.add_message(session_id,  user_id,  "assistant", result.raw)   
 
         return [result.raw, cache_key, False]
    
-    async def set_user_hitl(self, query: str, session_id: str | None = None, user_id: str | None = None) -> None:
+    async def set_user_hitl(self, query: str, message: str, session_id: str | None = None, user_id: str | None = None) -> None:
         await self.redis_context.add_message(session_id,  user_id,  "user", query)  
-        await self.redis_context.add_message(session_id,  user_id,  "assistant", "This action requires human approval.") 
+        await self.redis_context.add_message(session_id,  user_id,  "assistant", message) 
 
     async def get_user_context(self, session_id: str | None = None, user_id: str | None = None) -> list[str]:
         return await self.redis_context.get_history(session_id, user_id)
