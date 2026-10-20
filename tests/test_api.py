@@ -420,6 +420,40 @@ def test_weather_langgraph_agent_returns_agent_response(
     }
 
 
+def test_hitl_agent_returns_pending_approval_id(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.route.weather_agent import weather_agent_service
+
+    monkeypatch.setattr(
+        weather_agent_service.crewai_orchestrator,
+        "get_user_context",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        weather_agent_service.crewai_orchestrator,
+        "create_pending",
+        AsyncMock(return_value={"approval_id": "appr_test"}),
+    )
+
+    response = client.post(
+        "/api/v1/weather/agent/hitl",
+        json={
+            "query": "Please broadcast an alert to all users about the weather warning",
+            "session_id": "testtest7",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "pending_approval",
+        "message": "Human approval is required before this action can proceed.",
+        "data": {"approval_id": "appr_test"},
+        "isCached": False,
+    }
+
+
 def test_agent_providers_use_separate_report_cache_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

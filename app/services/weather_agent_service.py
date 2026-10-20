@@ -141,7 +141,7 @@ class WeatherAgentService(WeatherAgentInterface):
             return AgentResponse(
                 status=Status.PENDING_APPROVAL,
                 message="Human approval is required before this action can proceed.",
-                data={"approval_id": approval.approval_id},
+                data={"approval_id": approval["approval_id"]},
                 isCached=False,
                 cacheKey=None,
             )

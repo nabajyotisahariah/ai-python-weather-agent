@@ -36,6 +36,11 @@ class ForecastDay(BaseModel):
     uv_index: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     unavailable_fields: list[str] = Field(default_factory=list)
 
+
+class ApprovalData(BaseModel):
+    approval_id: str
+
+
 class Status(str, Enum):
     SUCCESS = "success"
     FAIL = "fail"
@@ -54,7 +59,7 @@ class AgentResponse(BaseModel):
     #                ] = Field(default="success", description="Status of the response")  
     status: Status = Field (default="success", description="Status of the response") 
     message: str | None = Field(default=None, max_length=2000)
-    data: WeatherData | list[ForecastDay] | None = None
+    data: WeatherData | list[ForecastDay] | ApprovalData | None = None
     isCached: bool = Field(
         default=False,
         strict=True,
