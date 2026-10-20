@@ -1,18 +1,5 @@
-from enum import Enum
 import re
-from dataclasses import dataclass
-
-class HITLDecision(str, Enum):
-    EXECUTE = "execute"
-    CLARIFICATION_REQUIRED = "clarification_required"
-    APPROVAL_REQUIRED = "approval_required"
-    REJECT = "reject"
-
-
-@dataclass(frozen=True)
-class ActionIntent:
-    action: str
-    target: str | None = None
+from app.schema.weather import ActionIntent
 
 
 ACTION_PATTERNS = (
