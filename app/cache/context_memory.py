@@ -40,7 +40,7 @@ class ContextMemory:
         self._initialized = True
 
     async def add_message(self, session_id: str, user_id: str, role: str, content: str) -> None:
-        key = f"weather:history:{session_id}:{user_id}"
+        key = f"weather:context:{session_id}:{user_id}"
 
         await self.redis.rpush(
             key,
@@ -50,6 +50,30 @@ class ContextMemory:
         await self.redis.expire(key, 86400)
 
     async def get_history(self, session_id: str, user_id: str) -> list[dict]:
-        key = f"weather:history:{session_id}:{user_id}"
+        key = f"weather:context:{session_id}:{user_id}"
         messages = await self.redis.lrange(key, 0, -1)
         return [json.loads(message) for message in messages]
+
+    async def set_resolved_city(
+        self,
+        session_id: str,
+        user_id: str,
+        city: str,
+    ) -> None:
+        if self.redis is None:
+            return
+
+        key = f"weather:location:{session_id}:{user_id}"
+        await self.redis.hset(key, "resolved_city", city)
+        await self.redis.expire(key, 86400)
+
+    async def get_resolved_city(
+        self,
+        session_id: str,
+        user_id: str,
+    ) -> str | None:
+        if self.redis is None:
+            return None
+
+        key = f"weather:location:{session_id}:{user_id}"
+        return await self.redis.hget(key, "resolved_city")

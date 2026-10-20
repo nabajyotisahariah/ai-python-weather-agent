@@ -42,7 +42,8 @@ class CrewAIOrchestrator:
         # Log the cached context for debugging
         print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
         
-        agent: Agent = create_weather_orchestrator()
+        resolved_cities: list[str] = []
+        agent: Agent = create_weather_orchestrator(resolved_cities.append)
 
         task: Task = create_weather_task(
             agent=agent,
@@ -59,6 +60,13 @@ class CrewAIOrchestrator:
         )
 
         result = await crew.kickoff_async()
+
+        if resolved_cities and session_id is not None and user_id is not None:
+            await self.redis_context.set_resolved_city(
+                session_id,
+                user_id,
+                resolved_cities[-1],
+            )
 
         # Cache the result
         await self.redis.set(cache_key,  result.raw, ex=3600)
@@ -90,7 +98,8 @@ class CrewAIOrchestrator:
         # Log the cached context for debugging
         print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
         
-        agent: Agent = create_weather_orchestrator()
+        resolved_cities: list[str] = []
+        agent: Agent = create_weather_orchestrator(resolved_cities.append)
 
         task: Task = create_weather_task(
             agent=agent,
@@ -107,6 +116,13 @@ class CrewAIOrchestrator:
         )
 
         result = await crew.kickoff_async()
+
+        if resolved_cities and session_id is not None:
+            await self.redis_context.set_resolved_city(
+                session_id,
+                user_id,
+                resolved_cities[-1],
+            )
 
         # Determine if result has city weather or not? If not, don't cache & ask for location clarification. 
         # We can use the needs_location_clarification function from guardrails/hitl_guardrails.py
@@ -144,6 +160,13 @@ class CrewAIOrchestrator:
 
     async def get_user_context(self, session_id: str | None = None, user_id: str | None = None) -> list[str]:
         return await self.redis_context.get_history(session_id, user_id)
+
+    async def get_resolved_city(
+        self,
+        session_id: str,
+        user_id: str,
+    ) -> str | None:
+        return await self.redis_context.get_resolved_city(session_id, user_id)
 
 
     async def create_pending(self, session_id: str, user_id: str, action: str, payload: dict,) -> dict:

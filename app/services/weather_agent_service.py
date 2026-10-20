@@ -114,14 +114,15 @@ class WeatherAgentService(WeatherAgentInterface):
 
         query = validate_query(query)
 
-        # 1. Load structured session state and user context.
-        context = await self.crewai_orchestrator.get_user_context(
-            session_id, user_id
-        )
-        print("process_weather_hitl context ",context)
+        #Caching Keys:
+        # weather:context:{session_id}:{user_id}    - Session & User specific context history
+        # weather:approval:{approval_id}            - Pending approval for consequential actions
+        # weather:location:{session_id}:{user_id}   - location information for the user (resolved city)
 
-        # Prefer a structured field, not a text scan of history.
-        #resolved_city = context.get("resolved_city")
+        resolved_city = await self.crewai_orchestrator.get_resolved_city(
+            session_id,
+            user_id,
+        )
 
         # 2. Check for consequential actions.
         #Ex: Please broadcast an alert to all users about the weather warning
@@ -129,6 +130,7 @@ class WeatherAgentService(WeatherAgentInterface):
         print("process_weather_hitl action_intent ",action_intent)
 
         if action_intent:
+            
             approval = await self.crewai_orchestrator.create_pending(
                 session_id=session_id,
                 user_id=user_id,
@@ -148,7 +150,7 @@ class WeatherAgentService(WeatherAgentInterface):
 
         # 3. Ask for missing location information.
         #Ex: "What's the weather like?" or "Will it rain tomorrow?" or "Do I need an umbrella?"
-        if needs_location_clarification(query, resolved_city=None):
+        if needs_location_clarification(query, resolved_city=resolved_city):
             return AgentResponse(
                 status=Status.PENDING_CLARIFICATION,
                 message="Which city would you like the weather forecast for?",

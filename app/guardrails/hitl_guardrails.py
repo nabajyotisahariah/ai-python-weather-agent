@@ -72,4 +72,27 @@ def needs_location_clarification(
     if not is_weather_query:
         return False
 
-    return True
+    location_match = re.search(
+        r"\b(?:in|at|near)\s+([a-z][a-z.'-]*(?:\s+[a-z][a-z.'-]*)?)",
+        query_lower,
+    )
+    if location_match is None:
+        return True
+
+    location = location_match.group(1).strip()
+    if location in {
+        "the morning",
+        "the afternoon",
+        "the evening",
+        "the night",
+        "my location",
+        "my area",
+        "here",
+        "there",
+        "today",
+        "tomorrow",
+        "tonight",
+    }:
+        return True
+
+    return False

@@ -1,14 +1,27 @@
 # orchestrator/crewai/agents.py
 
 from crewai import Agent
+from collections.abc import Callable
 
 from .tools import (
+    create_weather_tools,
+    answer_faq_question,
     get_current_weather,
     get_weather_forecast,
-    answer_faq_question,
 )
 
-def create_weather_orchestrator() -> Agent:
+def create_weather_orchestrator(
+    on_city_resolved: Callable[[str], None] | None = None,
+) -> Agent:
+    tools = (
+        [
+            get_current_weather,
+            get_weather_forecast,
+            answer_faq_question,
+        ]
+        if on_city_resolved is None
+        else create_weather_tools(on_city_resolved)
+    )
 
     return Agent(
         role="Weather Intelligence Orchestrator",
@@ -23,11 +36,7 @@ def create_weather_orchestrator() -> Agent:
             "specialized weather, forecast, and FAQ agents."
         ),
 
-        tools=[
-            get_current_weather,
-            get_weather_forecast,
-            answer_faq_question,
-        ],
+        tools=tools,
         verbose=True,
         allow_delegation=False,
         max_iter=1,

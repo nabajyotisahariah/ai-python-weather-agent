@@ -454,6 +454,26 @@ def test_hitl_agent_returns_pending_approval_id(
     }
 
 
+def test_weather_tool_reports_the_city_used(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.orchestrator.crewai import tools as crewai_tools
+
+    resolved_cities: list[str] = []
+    monkeypatch.setattr(
+        crewai_tools,
+        "run_weather_agent",
+        lambda city: f"Weather for {city}",
+    )
+
+    weather_tool = crewai_tools.create_weather_tools(
+        resolved_cities.append
+    )[0]
+
+    assert weather_tool.run(city="Delhi") == "Weather for Delhi"
+    assert resolved_cities == ["Delhi"]
+
+
 def test_agent_providers_use_separate_report_cache_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
