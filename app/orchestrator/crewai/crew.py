@@ -136,9 +136,8 @@ class CrewAIOrchestrator:
         # Cache the result
         await self.redis.set(cache_key,  result.raw, ex=3600)
 
-        # Update the context with the latest query and result
-        await self.redis_context.add_message(session_id,  user_id,  "user", query)  
-        await self.redis_context.add_message(session_id,  user_id,  "assistant", result.raw)   
+        # Update the context with the latest query and result 
+        await self.set_user_hitl(query, result.raw, session_id, user_id)
 
         return [result.raw, cache_key, False]
    
