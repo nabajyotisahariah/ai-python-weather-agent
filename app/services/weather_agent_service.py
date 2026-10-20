@@ -127,7 +127,7 @@ class WeatherAgentService(WeatherAgentInterface):
         # 2. Check for consequential actions.
         #Ex: Please broadcast an alert to all users about the weather warning
         action_intent = detect_consequential_action(query)
-        print("process_weather_hitl action_intent ",action_intent)
+        print("process_weather_hitl action_intent ",action_intent, " resolved_city ",resolved_city)
 
         if action_intent:
             
@@ -150,10 +150,16 @@ class WeatherAgentService(WeatherAgentInterface):
 
         # 3. Ask for missing location information.
         #Ex: "What's the weather like?" or "Will it rain tomorrow?" or "Do I need an umbrella?"
+        #    "Should I wear a jacket"
         if needs_location_clarification(query, resolved_city=resolved_city):
+            clarification_msg = "Which city would you like the weather forecast for?"
+            
+            await self.crewai_orchestrator.redis_context.add_message(session_id, user_id, "user", query)
+            await self.crewai_orchestrator.redis_context.add_message(session_id, user_id, "assistant", clarification_msg)
+
             return AgentResponse(
                 status=Status.PENDING_CLARIFICATION,
-                message="Which city would you like the weather forecast for?",
+                message=clarification_msg,
                 data=None,
                 isCached=False,
                 cacheKey=None,
