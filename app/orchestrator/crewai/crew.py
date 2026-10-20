@@ -67,11 +67,20 @@ class CrewAIOrchestrator:
 
         return [result.raw, cache_key, False]
    
-    async def run_weather_orchestrator_hitl(self, query: str, session_id: str | None = None, user_id: str | None = None) -> str:
+    async def run_weather_orchestrator_hitl(
+        self,
+        query: str,
+        session_id: str | None = None,
+        user_id: str | None = None,
+        resolved_city: str | None = None,
+    ) -> str:
         query = validate_query(query)
 
         query_str = query.casefold().replace(' ', '_')
-        cache_key = f"weather:orchestrator:hitl:{query_str}:{session_id}:{user_id}"
+        cache_key = (
+            f"weather:orchestrator:hitl:{query_str}:"
+            f"{resolved_city}:{session_id}:{user_id}"
+        )
         
         cached_result = await self.redis.get(cache_key)      
         
@@ -83,6 +92,13 @@ class CrewAIOrchestrator:
 
         # Get cached context if available
         cached_context = await self.redis_context.get_history(session_id, user_id)
+        if resolved_city:
+            cached_context.append(
+                {
+                    "role": "system",
+                    "content": f"Use {resolved_city} as the resolved location.",
+                }
+            )
 
         # Log the cached context for debugging
         print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
@@ -141,3 +157,42 @@ class CrewAIOrchestrator:
 
     async def get_user_context(self, session_id: str | None = None, user_id: str | None = None) -> list[str]:
         return await self.redis_context.get_history(session_id, user_id)
+
+    async def get_resolved_city(
+        self,
+        session_id: str,
+        user_id: str,
+    ) -> str | None:
+        return await self.redis_context.get_resolved_city(session_id, user_id)
+
+    async def set_resolved_city(
+        self,
+        session_id: str,
+        user_id: str,
+        city: str,
+    ) -> None:
+        await self.redis_context.set_resolved_city(session_id, user_id, city)
+
+    async def create_pending_clarification(
+        self,
+        query: str,
+        session_id: str,
+        user_id: str,
+    ) -> str:
+        return await self.redis_context.create_pending_clarification(
+            query,
+            session_id,
+            user_id,
+        )
+
+    async def consume_pending_clarification(
+        self,
+        clarification_id: str,
+        session_id: str,
+        user_id: str,
+    ) -> str | None:
+        return await self.redis_context.consume_pending_clarification(
+            clarification_id,
+            session_id,
+            user_id,
+        )

@@ -8,6 +8,10 @@ class WeatherRequest(BaseModel):
     query: str | None = Field(None, description="Query string for weather")
     session_id: str | None = Field(None, description="Session ID for the request")
     user_id: str | None = Field(None, description="User ID for the request")
+    clarification_id: str | None = Field(
+        None,
+        description="Opaque ID returned when the agent asks for a city",
+    )
 
 
 class WeatherData(BaseModel):
@@ -35,6 +39,11 @@ class ForecastDay(BaseModel):
     uv_index: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     unavailable_fields: list[str] = Field(default_factory=list)
 
+
+class ClarificationData(BaseModel):
+    clarification_id: str
+
+
 class Status(str, Enum):
     SUCCESS = "success"
     FAIL = "fail"
@@ -53,7 +62,7 @@ class AgentResponse(BaseModel):
     #                ] = Field(default="success", description="Status of the response")  
     status: Status = Field (default="success", description="Status of the response") 
     message: str | None = Field(default=None, max_length=2000)
-    data: WeatherData | list[ForecastDay] | None = None
+    data: WeatherData | list[ForecastDay] | ClarificationData | None = None
     isCached: bool = Field(
         default=False,
         strict=True,

@@ -34,7 +34,13 @@ class WeatherAgentInterface(ABC):
         pass
 
     @abstractmethod
-    async def process_weather_hitl(self, query: str, session_id: str, user_id: str) -> AgentResponse:
+    async def process_weather_hitl(
+        self,
+        query: str,
+        session_id: str,
+        user_id: str,
+        clarification_id: str | None = None,
+    ) -> AgentResponse:
         """
         Process a natural language weather query using an AI agent.
         

@@ -2,14 +2,19 @@ import logging
 import re
 from typing import Literal
 
+from app.cache.redis_cache import AsyncRedisCache
 from app.config import settings
+from app.guardrails.hitl_guardrails import (
+    extract_city_answer,
+    extract_explicit_city,
+    needs_location_clarification,
+    requires_action_approval,
+)
 from app.guardrails.input_guardrails import validate_query
 from app.orchestrator.crewai.crew import CrewAIOrchestrator
 from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
-from app.schema.weather import AgentResponse, Status
+from app.schema.weather import AgentResponse, ClarificationData, Status
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
-from app.cache.redis_cache import AsyncRedisCache
-from app.guardrails.hitl_guardrails import needs_location_clarification, requires_action_approval
 
 AgentProvider = Literal["crewai", "langgraph"]
 
@@ -59,47 +64,99 @@ class WeatherAgentService(WeatherAgentInterface):
         return report
 
     
-    async def process_weather_hitl(self, query: str, session_id: str, user_id: str) -> AgentResponse:
-        """Process a natural language weather query using the CrewAI agent."""
+    async def process_weather_hitl(
+        self,
+        query: str,
+        session_id: str,
+        user_id: str,
+        clarification_id: str | None = None,
+    ) -> AgentResponse:
+        """Route weather requests through clarification and action guardrails."""
+        query = validate_query(query)
+        explicit_city = extract_explicit_city(query)
 
-        context = await self.crewai_orchestrator.get_user_context(session_id, user_id)
-        print("process_weather_hitl ",context)
-        
-        #Guardrail check over here
-        # 1. Require human authorization for consequential actions.
         if requires_action_approval(query):
-
-            self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
-
             return AgentResponse(
+                status=Status.FAIL,
+                message=(
+                    "Consequential notifications are not supported by this "
+                    "service. No action was taken."
+                ),
+            )
+
+        if clarification_id is not None:
+            city = extract_city_answer(query)
+            if city is None:
+                return AgentResponse(
                     status=Status.PENDING_CLARIFICATION,
-                    message=str("This service is not available."),
-                    data=None,
-                    isCached=False,
-                    cacheKey=None,
+                    message="Please reply with the city you want the forecast for.",
+                    data=ClarificationData(clarification_id=clarification_id),
+                )
+            pending_query = (
+                await self.crewai_orchestrator.consume_pending_clarification(
+                    clarification_id,
+                    session_id,
+                    user_id,
+                )
+            )
+            if pending_query is None:
+                return AgentResponse(
+                    status=Status.FAIL,
+                    message=(
+                        "This clarification is invalid, expired, or belongs "
+                        "to a different session."
+                    ),
+                )
+            query = pending_query
+            resolved_city = city
+        else:
+            if explicit_city is not None:
+                resolved_city = explicit_city
+            elif needs_location_clarification(query, None):
+                resolved_city = (
+                    await self.crewai_orchestrator.get_resolved_city(
+                        session_id,
+                        user_id,
+                    )
+                )
+            else:
+                resolved_city = None
+            if needs_location_clarification(query, resolved_city):
+                pending_id = (
+                    await self.crewai_orchestrator.create_pending_clarification(
+                        query,
+                        session_id,
+                        user_id,
+                    )
+                )
+                return AgentResponse(
+                    status=Status.PENDING_CLARIFICATION,
+                    message="Which city would you like the weather forecast for?",
+                    data=ClarificationData(clarification_id=pending_id),
                 )
 
-        
-        # 2. Ask for missing information before invoking agents.
-        # if needs_location_clarification(query, context):
+        response, cache_key, is_cached = (
+            await self.crewai_orchestrator.run_weather_orchestrator_hitl(
+                query,
+                session_id=session_id,
+                user_id=user_id,
+                resolved_city=resolved_city,
+            )
+        )
+        if resolved_city and any(
+            re.search(rf"\b{term}\b", query.casefold())
+            for term in ("weather", "rain", "umbrella", "forecast", "temperature")
+        ):
+            await self.crewai_orchestrator.set_resolved_city(
+                session_id,
+                user_id,
+                resolved_city,
+            )
 
-        #     await self.crewai_orchestrator.set_user_hitl(query, session_id, user_id);
-            
-        #     return AgentResponse(
-        #             status=Status.PENDING_CLARIFICATION,
-        #             message=str("I need your location to answer accurately."),
-        #             data=None,
-        #             isCached=False,
-        #             cacheKey=None)
-    
-        [response, cache_key, is_cached] = await self.crewai_orchestrator.run_weather_orchestrator_hitl(query, session_id=session_id, user_id=user_id)
-        
-        report = AgentResponse(
+        return AgentResponse(
             status=Status.SUCCESS,
             message=str(response),
             data=None,
             isCached=is_cached,
             cacheKey=cache_key,
         )
-        
-        return report

@@ -8,6 +8,7 @@ from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.services.weather_agent_service import WeatherAgentService
 from app.schema.weather import AgentResponse, WeatherRequest, Status
 from app.guardrails.input_guardrails import GuardrailViolation, validate_query
+from app.cache.context_memory import HITLStateUnavailableError
 from app.utils.response import generic_api_response
 import logging
 
@@ -95,10 +96,18 @@ async def post_weather_hitl_route(
             raise HTTPException("Session ID is None or invalid")
     
         logger.info("Fetching current weather for city (POST): %s", query_val)
-        return await service.process_weather_hitl(query_val, session_id=session_id, user_id=user_id)
+        return await service.process_weather_hitl(
+            query_val,
+            session_id=session_id,
+            user_id=user_id,
+            clarification_id=request.clarification_id,
+        )
 
     except GuardrailViolation as exc:
         return generic_api_response(400, Status.FAIL, str(exc))
+    except HITLStateUnavailableError as exc:
+        logger.error("HITL state unavailable: %s", str(exc))
+        return generic_api_response(503, Status.ERROR, str(exc))
     except CityNotFoundError as exc:
         return generic_api_response(404, Status.FAIL, str(exc))
     except HTTPException as exc:
