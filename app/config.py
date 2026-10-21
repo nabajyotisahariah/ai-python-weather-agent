@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     weather_timeout_seconds: float = 6.0
 
     # Redis
-    redis_enabled: bool = False
+    redis_enabled: bool = True
     redis_url: str = "redis://localhost:6379/0"
     redis_cache_ttl_seconds: int = 3600
 
