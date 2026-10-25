@@ -1,9 +1,22 @@
+#docker compose up -d redis-stack
+
 services:
-  redis:
-    image: redis:7-alpine
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  redis-stack:
+    image: redis/redis-stack:latest
     ports:
       - "6379:6379"
-    restart: unless-stopped
     volumes:
       - redis_data:/data
     healthcheck:

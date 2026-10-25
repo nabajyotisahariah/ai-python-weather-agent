@@ -14,7 +14,10 @@ autogen-ext[openai]==0.7.5
 google-adk
 google-cloud-secret-manager
 pytest
-redis
+#redis
 langfuse==4.15.6
 mcp[cli]
 uuid4
+redis>=5 
+openai 
+numpy
