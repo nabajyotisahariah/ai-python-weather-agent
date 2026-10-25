@@ -57,6 +57,11 @@ def needs_location_clarification(
         "wind",
         "storm",
         "cloud",
+        "aqi",
+        "air quality",
+        "pollution",
+        "pollutant",
+        "smog",
     )
 
     query_lower = query.casefold()
@@ -69,7 +74,7 @@ def needs_location_clarification(
         return False
 
     location_match = re.search(
-        r"\b(?:in|at|near)\s+([a-z][a-z.'-]*(?:\s+[a-z][a-z.'-]*)?)",
+        r"\b(?:in|at|near|for|of)\s+([a-z][a-z.'-]*(?:\s+[a-z][a-z.'-]*)?)",
         query_lower,
     )
 

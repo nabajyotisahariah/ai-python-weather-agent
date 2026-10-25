@@ -5,7 +5,12 @@ from collections.abc import Callable
 from crewai import Crew
 from crewai.tools import tool
 
-from app.agents.crewai import build_weather_crew, build_weather_forecast_crew, build_faq_crew
+from app.agents.crewai import (
+    build_faq_crew,
+    build_weather_aqi_crew,
+    build_weather_crew,
+    build_weather_forecast_crew,
+)
 from app.guardrails.input_guardrails import validate_query
 from app.guardrails.tool_guardrails import validate_tool_call
 
@@ -34,6 +39,14 @@ def run_forecast_agent(city: str, days: int = 7) -> str:
         inputs={"city": city},
     )
     return result.raw
+
+
+def run_air_quality_agent(city: str) -> str:
+    city = validate_query(city)
+    aqi_crew: Crew = build_weather_aqi_crew(city)
+    result = aqi_crew.kickoff(inputs={"city": city})
+    return result.raw
+
 
 def run_faq_agent(question: str) -> str:
 
@@ -78,6 +91,17 @@ def _get_weather_forecast(
     return result
 
 
+def _get_air_quality(
+    city: str,
+    on_city_resolved: Callable[[str], None] | None = None,
+) -> str:
+    validate_tool_call("get_air_quality", {"city": city})
+    result = run_air_quality_agent(city)
+    if on_city_resolved is not None:
+        on_city_resolved(city)
+    return result
+
+
 @tool("get_current_weather")
 def get_current_weather(city: str) -> str:
     """
@@ -91,6 +115,13 @@ def get_weather_forecast(city: str, days: int = 7) -> str:
     Get the weather forecast for a city.
     """
     return _get_weather_forecast(city, days)
+
+
+@tool("get_air_quality")
+def get_air_quality(city: str) -> str:
+    """Get current air quality information for a city."""
+    return _get_air_quality(city)
+
 
 @tool("answer_faq_question")
 def answer_faq_question(question: str) -> str:
@@ -115,8 +146,14 @@ def create_weather_tools(
         """Get a weather forecast and remember the city used for this request."""
         return _get_weather_forecast(city, days, on_city_resolved)
 
+    @tool("get_air_quality")
+    def get_air_quality_for_request(city: str) -> str:
+        """Get air quality and remember the city used for this request."""
+        return _get_air_quality(city, on_city_resolved)
+
     return [
         get_current_weather_for_request,
         get_weather_forecast_for_request,
+        get_air_quality_for_request,
         answer_faq_question,
     ]

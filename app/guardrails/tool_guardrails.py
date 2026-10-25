@@ -3,6 +3,7 @@ from app.guardrails.input_guardrails import GuardrailViolation
 ALLOWED_TOOLS = {
     "get_weather",
     "get_weather_forecast",
+    "get_air_quality",
     "search_faq",
 }
 

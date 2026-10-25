@@ -21,6 +21,9 @@ def create_weather_task(agent, query: str, cached_context: list) -> Task:
 
         If the user asks for forecast, use the forecast capability.
 
+        If the user asks about air quality, AQI, or pollution, use the
+        air-quality capability.
+
         If the user asks a general question about the application, pricing,
         subscriptions, or usage, use the FAQ capability.
 

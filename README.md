@@ -96,6 +96,7 @@ GOOGLE_API_KEY=your-google-api-key
 GOOGLE_ADK_MODEL=gemini-2.0-flash
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
+WAQI_API_TOKEN=your-waqi-api-token
 REDIS_ENABLED=false
 REDIS_URL=redis://localhost:6379/0
 REDIS_CACHE_TTL_SECONDS=3600
@@ -108,6 +109,7 @@ VECTOR_STORE=faiss
 Required settings:
 
 - `OPENAI_API_KEY` is required in development and production.
+- `WAQI_API_TOKEN` is required only for AQI requests sent through `/api/v1/weather/agent`.
 - `GOOGLE_API_KEY` is required in production when the Google ADK path is used.
 - `REDIS_URL` is only required when `REDIS_ENABLED=true` and Redis is running remotely.
 - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are optional; they enable Langfuse telemetry when both are present.
@@ -329,7 +331,7 @@ Example response:
 
 ### AI Weather Summaries
 
-For intelligent, natural-language weather requests, the recommended approach is using the robust multi-agent POST endpoint. This endpoint uses an orchestrator to seamlessly route your query to either the current weather agent or the forecast agent (or both) based on the user's intent:
+For intelligent, natural-language weather requests, the recommended approach is using the robust multi-agent POST endpoint. This endpoint uses an orchestrator to route requests to the current-weather, forecast, air-quality (WAQI), and FAQ specialist agents as needed:
 
 ```http
 POST /api/v1/weather/agent
@@ -337,6 +339,15 @@ Content-Type: application/json
 
 {
   "query": "What is the current weather and 3-day forecast for London?",
+  "session_id": "weather-session-123"
+}
+```
+
+For air quality, configure `WAQI_API_TOKEN` in `.env` (or as a deployment environment variable) and ask, for example:
+
+```json
+{
+  "query": "What is the current AQI and pollution level in Delhi?",
   "session_id": "weather-session-123"
 }
 ```
@@ -371,13 +382,13 @@ Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent/langgraph" `
 
 ### Human-in-the-loop requests
 
-Use `POST /api/v1/weather/agent/hitl` for requests that may need clarification or human approval. Configure Redis first and send a `query` plus a `session_id` with at least six characters. Reuse the session ID when answering a clarification:
+Use `POST /api/v1/weather/agent/hitl` for requests that may need clarification or human approval. AQI and air-pollution questions are handled by the WAQI specialist; configure `WAQI_API_TOKEN` in `.env` and send the city in the query. Configure Redis first and send a `query` plus a `session_id` with at least six characters. Reuse the session ID when answering a clarification:
 
 ```powershell
 Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent/hitl" `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"query":"What is the weather like?","session_id":"weather-session-123"}'
+  -Body '{"query":"What is the AQI for Noida?","session_id":"weather-session-123"}'
 ```
 
 When the query does not identify a city and the session has no previously resolved city, the response has `"status": "pending_clarification"` and asks which city to use. Send the city in a follow-up query using the same session ID.
