@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     # Weather
     weather_api_url: str = "https://wttr.in"
     weather_timeout_seconds: float = 6.0
+    waqi_api_url: str = "https://api.waqi.info"
+    waqi_api_token: str | None = None
 
     # Redis
     redis_enabled: bool = True

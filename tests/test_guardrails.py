@@ -52,3 +52,31 @@ def test_location_guardrail_requests_city_when_missing() -> None:
         "Will it rain tomorrow?",
         resolved_city=None,
     ) is True
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "What is the AQI?",
+        "How is the air quality?",
+        "Is there pollution?",
+    ],
+)
+def test_location_guardrail_requests_city_for_air_quality(
+    query: str,
+) -> None:
+    assert needs_location_clarification(query, resolved_city=None) is True
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "What is the AQI in Noida?",
+        "What is the AQI for Noida?",
+        "How is the air quality near Delhi?",
+    ],
+)
+def test_location_guardrail_accepts_air_quality_city(
+    query: str,
+) -> None:
+    assert needs_location_clarification(query, resolved_city=None) is False
