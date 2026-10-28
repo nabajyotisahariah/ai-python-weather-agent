@@ -7,19 +7,22 @@ from redis.asyncio import Redis
 from redis.commands.search.field import TagField, TextField, VectorField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
-
+from app.cache.redis_cache import AsyncRedisCache
 from app.config import settings
 
-INDEX_NAME = "idx:weather_semantic"
-PREFIX = "weather:semantic:"
-EMBEDDING_MODEL = "text-embedding-3-small"
-VECTOR_DIMENSIONS = 1536
 
-CACHE_TTL_SECONDS = 120
-SIMILARITY_THRESHOLD = 0.92
 
 
 class SemanticCache:
+
+    INDEX_NAME = "idx:weather_semantic"
+    PREFIX = "weather:semantic:"
+    EMBEDDING_MODEL = "text-embedding-3-small"
+    VECTOR_DIMENSIONS = 1536
+
+    CACHE_TTL_SECONDS = 120
+    SIMILARITY_THRESHOLD = 0.92
+
     _instance: "SemanticCache | None" = None
     _initialized = False
 
@@ -32,12 +35,11 @@ class SemanticCache:
         if self._initialized:
             return
 
-        self.redis: Redis | None = (
-            Redis.from_url(settings.redis_url, decode_responses=False)
-            if settings.redis_enabled
-            else None
-        )
         self.openai_client = AsyncOpenAI()
+        #self.redis = AsyncRedisCache()
+        self.redis = AsyncRedisCache().redis
+
+        
         self._initialized = True
 
     @staticmethod
@@ -47,7 +49,7 @@ class SemanticCache:
 
     async def create_embedding(self, text: str) -> np.ndarray:
         result = await self.openai_client.embeddings.create(
-            model=EMBEDDING_MODEL,
+            model=self.EMBEDDING_MODEL,
             input=text,
         )
         return np.asarray(
@@ -60,7 +62,7 @@ class SemanticCache:
         if self.redis is None:
             return
 
-        print("Initializing semantic cache index...", index_name=INDEX_NAME, prefix=PREFIX)
+        print(f"Initializing semantic cache index... index_name={self.INDEX_NAME}, prefix={self.PREFIX}")
 
         schema = [
             TagField("intent"),
@@ -74,17 +76,17 @@ class SemanticCache:
                 "FLAT",
                 {
                     "TYPE": "FLOAT32",
-                    "DIM": VECTOR_DIMENSIONS,
+                    "DIM": self.VECTOR_DIMENSIONS,
                     "DISTANCE_METRIC": "COSINE",
                 },
             ),
         ]
 
         try:
-            await self.redis.ft(INDEX_NAME).create_index(
+            await self.redis.ft(self.INDEX_NAME).create_index(
                 schema,
                 definition=IndexDefinition(
-                    prefix=[PREFIX],
+                    prefix=[self.PREFIX],
                     index_type=IndexType.HASH,
                 ),
             )
@@ -124,7 +126,7 @@ class SemanticCache:
             .dialect(2)
         )
 
-        results = await self.redis.ft(INDEX_NAME).search(
+        results = await self.redis.ft(self.INDEX_NAME).search(
             query,
             query_params={"vec": vector.tobytes()},
         )
@@ -137,10 +139,10 @@ class SemanticCache:
         similarity = 1.0 - distance
 
         print(f"Best match distance {distance:.4f}, similarity: {similarity:.4f} for query: '{query_text}'")
-        if similarity < SIMILARITY_THRESHOLD:
+        if similarity < self.SIMILARITY_THRESHOLD:
             return None
         print(f"Returning cached response for query: '{query_text}'")
-        return best.response.decode("utf-8")
+        return best.response if isinstance(best.response, str) else best.response.decode("utf-8")
 
     async def set_semantic_cache(
         self,
@@ -158,7 +160,7 @@ class SemanticCache:
             return
 
         vector = await self.create_embedding(query_text)
-        key = f"{PREFIX}{uuid.uuid4().hex}"
+        key = f"{self.PREFIX}{uuid.uuid4().hex}"
 
         await self.redis.hset(
             key,

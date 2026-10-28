@@ -214,7 +214,7 @@ class WeatherAgentService(WeatherAgentInterface):
             resolved_city,
         )
 
-        action_intent = detect_consequential_action(query)
+        action_intent = detect_consequential_action(query) #broadcast_alert, bulk_notification
         if action_intent:
             approval = await self.crewai_orchestrator.create_pending(
                 session_id=session_id,
