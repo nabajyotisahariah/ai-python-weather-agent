@@ -8,6 +8,7 @@ from app.orchestrator.langgraph.orchestrator import LangGraphOrchestrator
 from app.schema.weather import AgentResponse, Status
 from app.services.interface.weather_agent_interface import WeatherAgentInterface
 from app.cache.redis_cache import AsyncRedisCache
+from app.cache.semantic_cache import SemanticCache
 from app.guardrails.hitl_guardrails import detect_consequential_action, needs_location_clarification
 
 AgentProvider = Literal["crewai", "langgraph"]
@@ -74,6 +75,7 @@ class WeatherAgentService(WeatherAgentInterface):
 
     def __init__(self) -> None:
         self.cache = AsyncRedisCache()
+        self.semantic_cache = SemanticCache()
         self.logger = logging.getLogger(__name__)
         self.crewai_orchestrator = CrewAIOrchestrator()
         self.langgraph_orchestrator = LangGraphOrchestrator()
@@ -83,9 +85,7 @@ class WeatherAgentService(WeatherAgentInterface):
         if self._semantic_cache_initialized:
             return
 
-        from app.cache import semantic_cache
-
-        await semantic_cache.initialize_semantic_cache()
+        await self.semantic_cache.initialize_semantic_cache()
         self._semantic_cache_initialized = True
 
     async def process_weather_query(self, query: str, session_id: str, user_id: str) -> AgentResponse:
@@ -202,8 +202,6 @@ class WeatherAgentService(WeatherAgentInterface):
         session_id: str,
         user_id: str,
     ) -> AgentResponse:
-        from app.cache import semantic_cache
-
         print("process_weather_hitl_semantic query: ", query)
 
         query = validate_query(query)
@@ -262,10 +260,14 @@ class WeatherAgentService(WeatherAgentInterface):
         )
         print("process_weather_hitl_semantic location_matches: ", location_matches," resolved_city ",resolved_city  )
 
-        if cache_dimensions is not None and location_matches:
+        if (
+            cache_dimensions is not None
+            and resolved_city is not None
+            and location_matches
+        ):
             await self._initialize_semantic_cache()
             intent, scope = cache_dimensions
-            cached_response = await semantic_cache.get_semantic_cache(
+            cached_response = await self.semantic_cache.get_semantic_cache(
                 query,
                 intent=intent,
                 location=resolved_city,
@@ -305,7 +307,7 @@ class WeatherAgentService(WeatherAgentInterface):
             ):
                 await self._initialize_semantic_cache()
                 intent, scope = cache_dimensions
-                await semantic_cache.set_semantic_cache(
+                await self.semantic_cache.set_semantic_cache(
                     query,
                     str(response),
                     intent=intent,
