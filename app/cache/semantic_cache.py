@@ -107,7 +107,7 @@ class SemanticCache:
             return None
 
         vector = await self.create_embedding(query_text)
-        print("\nget_semantic_cache called with parameters:")
+        print("\nget_semantic_cache:")
         print(f"Searching semantic cache for query: '{query_text}', intent: '{intent}', location: '{location}', units: '{units}', scope: '{scope}'")
 
         query = (
@@ -128,6 +128,8 @@ class SemanticCache:
             query,
             query_params={"vec": vector.tobytes()},
         )
+        print(f"Found {len(results.docs)} results in semantic cache for query: '{query_text}'")
+        print(f"Results: {[doc for doc in results.docs]}")
 
         if not results.docs:
             return None
