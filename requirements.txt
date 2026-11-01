@@ -14,6 +14,7 @@ autogen-ext[openai]==0.7.5
 google-adk
 google-cloud-secret-manager
 pytest
+pytest-asyncio
 #redis
 langfuse==4.15.6
 mcp[cli]

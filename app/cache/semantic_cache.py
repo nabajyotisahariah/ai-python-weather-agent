@@ -10,9 +10,6 @@ from redis.commands.search.query import Query
 from app.cache.redis_cache import AsyncRedisCache
 from app.config import settings
 
-
-
-
 class SemanticCache:
 
     INDEX_NAME = "idx:weather_semantic"
@@ -110,7 +107,8 @@ class SemanticCache:
             return None
 
         vector = await self.create_embedding(query_text)
-        print(f"Searching semantic cache for query: '{query_text}' with intent: '{intent}', location: '{location}', units: '{units}', scope: '{scope}'")
+        print("\nget_semantic_cache called with parameters:")
+        print(f"Searching semantic cache for query: '{query_text}', intent: '{intent}', location: '{location}', units: '{units}', scope: '{scope}'")
 
         query = (
             Query(
@@ -138,7 +136,7 @@ class SemanticCache:
         distance = float(best.distance)
         similarity = 1.0 - distance
 
-        print(f"Best match distance {distance:.4f}, similarity: {similarity:.4f} for query: '{query_text}'")
+        print(f"Best match distance similarity: {similarity:.4f} for self.SIMILARITY_THRESHOLD: '{self.SIMILARITY_THRESHOLD}'")
         if similarity < self.SIMILARITY_THRESHOLD:
             return None
         print(f"Returning cached response for query: '{query_text}'")
@@ -158,6 +156,8 @@ class SemanticCache:
         """Store a successful response and its embedding."""
         if self.redis is None:
             return
+
+        print(f"Storing response in semantic cache for query: '{query_text}' response: '{response}' with intent: '{intent}', location: '{location}', units: '{units}', scope: '{scope}'")
 
         vector = await self.create_embedding(query_text)
         key = f"{self.PREFIX}{uuid.uuid4().hex}"
