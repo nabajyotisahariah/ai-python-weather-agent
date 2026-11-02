@@ -141,7 +141,7 @@ class SemanticCache:
         print(f"Best match distance similarity: {similarity:.4f} for self.SIMILARITY_THRESHOLD: '{self.SIMILARITY_THRESHOLD}'")
         if similarity < self.SIMILARITY_THRESHOLD:
             return None
-        print(f"Returning cached response for query: '{query_text}'")
+       
         return best.response if isinstance(best.response, str) else best.response.decode("utf-8")
 
     async def set_semantic_cache(
@@ -159,7 +159,7 @@ class SemanticCache:
         if self.redis is None:
             return
 
-        print(f"Storing response in semantic cache for query: '{query_text}' response: '{response}' with intent: '{intent}', location: '{location}', units: '{units}', scope: '{scope}'")
+        print(f"set_semantic_cache query: '{query_text}' response: '{response}' with intent: '{intent}', location: '{location}', units: '{units}', scope: '{scope}'")
 
         vector = await self.create_embedding(query_text)
         key = f"{self.PREFIX}{uuid.uuid4().hex}"

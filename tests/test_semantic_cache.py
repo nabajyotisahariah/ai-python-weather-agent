@@ -166,10 +166,15 @@ async def test_semantic_cache_multiple_use_cases(semantic_cache):
         )
 
     use_cases = [
+        ("What is the weather in Noida?", "weather", "Noida", "metric", "current", records[0][1]),
+        ("Tell me today's weather in Noida", "weather", "Noida", "metric", "current", records[0][1]),
+        ("How is the weather in Noida right now?", "weather", "Noida", "metric", "current", records[0][1]),
         ("How is it in Noida now?", "weather", "Noida", "metric", "current", records[0][1]),
-        ("Will it rain in Noida?", "weather", "Noida", "metric", "forecast", records[2][1]),
-        ("What's the air quality in Delhi?", "air_quality", "Delhi", "metric", "current", records[4][1]),
-        ("Give me Assam's current weather in Fahrenheit", "weather", "Assam", "imperial", "current", "Assam"),
+        ("Will it rain in Noida?", "weather", "Noida", "metric", "forecast", records[4][1]),
+         ("What is the weather in Delhi?", "weather", "Delhi", "metric", "current", records[3][1]),
+        ("Tell me today's weather in Delhi", "weather", "Delhi", "metric", "current", records[3][1]),
+         ("What's the air quality in Delhi?", "air_quality", "Delhi", "metric", "current", records[5][1]),
+         ("Give me Assam's current weather in Fahrenheit", "weather", "Assam", "imperial", "current", "Assam"),
     ]
 
     for query, intent, location, units, scope, expected_response in use_cases:

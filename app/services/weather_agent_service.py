@@ -263,7 +263,7 @@ class WeatherAgentService(WeatherAgentInterface):
         if (
             cache_dimensions is not None
             and resolved_city is not None
-            and location_matches
+           # and location_matches
         ):
             await self._initialize_semantic_cache()
             intent, scope = cache_dimensions
@@ -284,8 +284,9 @@ class WeatherAgentService(WeatherAgentInterface):
                     status=Status.SUCCESS,
                     message=cached_response,
                     data=None,
-                    isCached=True,
+                    isCached=False,
                     cacheKey=None,
+                    isSemanticCached=True,
                 )
 
         response, cache_key, is_cached = (
@@ -296,29 +297,40 @@ class WeatherAgentService(WeatherAgentInterface):
             )
         )
 
-        if cache_dimensions is not None:
-            cache_city = await self.crewai_orchestrator.get_resolved_city(
-                session_id,
-                user_id,
-            )
-            if (
-                cache_city is not None
-                and _query_matches_resolved_city(query, cache_city)
-            ):
-                await self._initialize_semantic_cache()
-                intent, scope = cache_dimensions
-                await self.semantic_cache.set_semantic_cache(
-                    query,
-                    str(response),
-                    intent=intent,
-                    location=cache_city,
-                    scope=scope,
-                )
+        # if cache_dimensions is not None:
+        #     cache_city = await self.crewai_orchestrator.get_resolved_city(
+        #         session_id,
+        #         user_id,
+        #     )
+        #     if (
+        #         cache_city is not None
+        #         and _query_matches_resolved_city(query, cache_city)
+        #     ):
+        #         await self._initialize_semantic_cache()
+        #         intent, scope = cache_dimensions
+        #         await self.semantic_cache.set_semantic_cache(
+        #             query,
+        #             str(response),
+        #             intent=intent,
+        #             location=cache_city,
+        #             scope=scope,
+        #         )
+
+        await self._initialize_semantic_cache()
+        intent, scope = cache_dimensions
+        await self.semantic_cache.set_semantic_cache(
+            query,
+            str(response),
+            intent=intent,
+            location=resolved_city,
+            scope=scope,
+        )
 
         return AgentResponse(
             status=Status.SUCCESS,
             message=str(response),
             data=None,
-            isCached=is_cached,
+            isCached=False,
             cacheKey=cache_key,
+            isSemanticCached=False,
         )
