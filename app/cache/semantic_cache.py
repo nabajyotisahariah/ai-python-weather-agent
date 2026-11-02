@@ -17,7 +17,7 @@ class SemanticCache:
     EMBEDDING_MODEL = "text-embedding-3-small"
     VECTOR_DIMENSIONS = 1536
 
-    CACHE_TTL_SECONDS = 120
+    CACHE_TTL_SECONDS = 60 * 60 * 24
     SIMILARITY_THRESHOLD = 0.92
 
     _instance: "SemanticCache | None" = None

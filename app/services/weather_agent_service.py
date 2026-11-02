@@ -273,6 +273,7 @@ class WeatherAgentService(WeatherAgentInterface):
                 location=resolved_city,
                 scope=scope,
             )
+            print("process_weather_hitl_semantic cached_response: ", cached_response)
             if cached_response is not None:
                 await self.crewai_orchestrator.set_user_hitl(
                     query,
@@ -285,7 +286,6 @@ class WeatherAgentService(WeatherAgentInterface):
                     message=cached_response,
                     data=None,
                     isCached=False,
-                    cacheKey=None,
                     isSemanticCached=True,
                 )
 
@@ -330,7 +330,6 @@ class WeatherAgentService(WeatherAgentInterface):
             status=Status.SUCCESS,
             message=str(response),
             data=None,
-            isCached=False,
             cacheKey=cache_key,
             isSemanticCached=False,
         )
