@@ -1,0 +1,242 @@
+If you mean **Redis Cluster (Redis Cluster Mode) running/used from your GCP GKE cluster**, there are two common architectures:
+
+1. **Recommended for production:** Google Cloud Memorystore for Redis/Redis Cluster, accessed from GKE.
+2. **Self-managed Redis Cluster inside GKE:** Redis pods + StatefulSet + persistent storage + cluster initialization.
+
+For your **Python Agentic AI application on GKE**, I would use **Memorystore for Redis Cluster** rather than running Redis yourself in Kubernetes.
+
+### Recommended architecture
+
+```text
+                    GCP
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│   GKE Cluster                                                │
+│                                                              │
+│   ┌───────────────────┐                                      │
+│   │ Python AI Agent   │                                      │
+│   │ FastAPI            │                                      │
+│   │                   │                                      │
+│   │ Redis Client       │                                      │
+│   └─────────┬─────────┘                                      │
+│             │                                                │
+│             │ Private IP                                     │
+│             ▼                                                │
+│   ┌───────────────────────────────────────┐                  │
+│   │ Google Memorystore for Redis Cluster  │                  │
+│   │                                       │                  │
+│   │  ┌────────┐ ┌────────┐ ┌────────┐    │                  │
+│   │  │Shard 1 │ │Shard 2 │ │Shard 3 │    │                  │
+│   │  │Primary │ │Primary │ │Primary │    │                  │
+│   │  │Replica │ │Replica │ │Replica │    │                  │
+│   │  └────────┘ └────────┘ └────────┘    │                  │
+│   └───────────────────────────────────────┘                  │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 1. Create Redis Cluster
+
+Using Google Cloud CLI, the exact command depends on whether you're using **Memorystore for Redis Cluster** versus the older single-instance Memorystore for Redis.
+
+For Redis Cluster, first make sure the required API is enabled:
+
+```bash
+gcloud services enable redis.googleapis.com
+```
+
+Then create the Redis cluster in the same VPC/network used by your GKE cluster.
+
+For example:
+
+```bash
+gcloud redis clusters create ai-weather-redis \
+  --region=asia-south2 \
+  --network=projects/PROJECT_ID/global/networks/default \
+  --shard-count=3 \
+  --replica-count=1
+```
+
+Enabled IAM ROle
+    Permission 'redis.clusters.create'
+    
+Create VPC:
+    https://console.cloud.google.com/networking/networks/list?project=python-project-1st-sep
+
+
+
+Check:
+
+```bash
+gcloud redis clusters describe ai-weather-redis \
+  --region=asia-south2
+```
+
+The important part is that **GKE and Redis are connected through the same VPC/private networking path**.
+
+### 2. Get the Redis endpoint
+
+After creation:
+
+```bash
+gcloud redis clusters describe ai-weather-redis \
+  --region=asia-south2
+```
+
+Look for the cluster endpoint/IP information.
+
+You should **not expose Redis through a Kubernetes `LoadBalancer` or public IP**.
+
+Your application should connect through the private GCP network.
+
+### 3. Put Redis configuration into Kubernetes Secret
+
+For your Python application, I would keep the endpoint outside the Docker image.
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-weather-redis
+type: Opaque
+stringData:
+  REDIS_URL: "redis://10.x.x.x:6379"
+```
+
+Then:
+
+```bash
+kubectl apply -f redis-secret.yaml
+```
+
+Your Deployment:
+
+```yaml
+env:
+  - name: REDIS_URL
+    valueFrom:
+      secretKeyRef:
+        name: ai-weather-redis
+        key: REDIS_URL
+```
+
+Your Python code can continue using:
+
+```python
+REDIS_URL = os.getenv("REDIS_URL")
+```
+
+### 4. For Redis Cluster, use a cluster-aware Python client
+
+This is important.
+
+If you enable **Redis Cluster**, don't treat it exactly like a standalone Redis server.
+
+For Python:
+
+```bash
+pip install redis
+```
+
+Then:
+
+```python
+from redis.cluster import RedisCluster
+
+redis_client = RedisCluster(
+    host="REDIS_HOST",
+    port=6379,
+    decode_responses=True,
+)
+```
+
+Or configure the URL/host according to the Redis Cluster endpoint provided by Memorystore.
+
+The Redis Cluster client understands that keys may belong to different shards.
+
+---
+
+## For your AI Weather Agent
+
+Your current architecture can become:
+
+```text
+Internet
+   │
+   ▼
+GCP Load Balancer
+   │
+   ▼
+GKE Ingress
+   │
+   ▼
+┌───────────────────────────────┐
+│ FastAPI Weather Agent         │
+│                               │
+│ ┌───────────┐ ┌────────────┐ │
+│ │ Weather   │ │ CrewAI /   │ │
+│ │ Service   │ │ LLM Agent  │ │
+│ └───────────┘ └────────────┘ │
+│              │                │
+│              ▼                │
+│          Redis Client         │
+└──────────────┬────────────────┘
+               │
+               │ Private VPC
+               ▼
+       ┌─────────────────────┐
+       │ Memorystore Redis   │
+       │ Cluster             │
+       │                     │
+       │ Shard 1 ─ Replica   │
+       │ Shard 2 ─ Replica   │
+       │ Shard 3 ─ Replica   │
+       └─────────────────────┘
+```
+
+Redis can then handle things such as:
+
+* Agent conversation/session state
+* API response caching
+* Weather-result caching
+* Rate limiting
+* Distributed locks
+* Background-job state
+* WebSocket/session state
+* Agent intermediate state
+
+### Important distinction
+
+If by **"enable Redis cluster in GKE"** you mean you already have a Redis container/pod in your Helm chart and want to turn that into a **Redis Cluster**, that's a different setup.
+
+In that case you'd typically need:
+
+```text
+redis-0
+redis-1
+redis-2
+redis-3
+redis-4
+redis-5
+```
+
+with a Kubernetes `StatefulSet`, persistent volumes, headless Service, and Redis cluster initialization:
+
+```bash
+redis-cli --cluster create \
+  redis-0:6379 \
+  redis-1:6379 \
+  redis-2:6379 \
+  redis-3:6379 \
+  redis-4:6379 \
+  redis-5:6379 \
+  --cluster-replicas 1
+```
+
+That gives you **3 masters + 3 replicas**.
+
+For your GCP production architecture, however, I'd keep Redis **outside GKE using Memorystore** and let Kubernetes focus on your Python application. This avoids having to manage Redis failover, persistence, upgrades, shard topology, and recovery yourself.
+
+If you show me your **current `values.yaml` and Helm Deployment for the AI Weather Agent**, I can convert it to **GKE + Memorystore Redis Cluster + Kubernetes Secret**, including the exact Helm templates.

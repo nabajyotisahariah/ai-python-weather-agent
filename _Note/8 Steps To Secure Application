@@ -1,0 +1,182 @@
+Yes. In your weather application, you can disable FastAPI's Swagger UI, ReDoc, and OpenAPI JSON by changing the `FastAPI()` initialization.
+
+### 1. Find your `app/main.py`
+
+You probably have something like:
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI(
+    title="AI Weather Agent",
+    version="1.0.0"
+)
+```
+
+Change it to:
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI(
+    title="AI Weather Agent",
+    version="1.0.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
+)
+```
+
+That's all you need.
+
+### 2. What gets disabled
+
+Before:
+
+```text
+http://localhost:8000/docs
+http://localhost:8000/redoc
+http://localhost:8000/openapi.json
+```
+
+After the change, these will return:
+
+```text
+404 Not Found
+```
+
+Your actual APIs continue to work normally:
+
+```text
+/health
+/weather
+/mcp
+...
+```
+
+### 3. Better approach for your project
+
+Since you have **local development + GKE production**, I recommend **not disabling Swagger locally**, but disabling it in production.
+
+In your `config.py`:
+
+```python
+class Settings(BaseSettings):
+    app_env: str = "development"
+
+    # other settings...
+
+    class Config:
+        env_file = ".env"
+```
+
+Then in `main.py`:
+
+```python
+from fastapi import FastAPI
+from app.config import settings
+
+if settings.app_env == "production":
+    app = FastAPI(
+        title="AI Weather Agent",
+        version="1.0.0",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
+else:
+    app = FastAPI(
+        title="AI Weather Agent",
+        version="1.0.0",
+    )
+```
+
+Your local `.env`:
+
+```env
+APP_ENV=development
+```
+
+GKE:
+
+```env
+APP_ENV=production
+```
+
+So you get:
+
+```text
+LOCAL
+http://localhost:8000/docs
+       ↓
+Swagger available
+
+
+GKE PRODUCTION
+https://your-domain.com/docs
+       ↓
+404
+```
+
+### 4. Even cleaner version
+
+You can avoid duplicating `FastAPI()`:
+
+```python
+from fastapi import FastAPI
+from app.config import settings
+
+app = FastAPI(
+    title="AI Weather Agent",
+    version="1.0.0",
+    docs_url=None if settings.app_env == "production" else "/docs",
+    redoc_url=None if settings.app_env == "production" else "/redoc",
+    openapi_url=None if settings.app_env == "production" else "/openapi.json",
+)
+```
+
+I recommend this version for your **weather-agent project**.
+
+### 5. Verify locally
+
+Run:
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+With:
+
+```env
+APP_ENV=development
+```
+
+check:
+
+```text
+http://localhost:8000/docs
+```
+
+Swagger should appear.
+
+Then set:
+
+```env
+APP_ENV=production
+```
+
+restart:
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+and:
+
+```text
+http://localhost:8000/docs
+```
+
+should return `404`.
+
+**Important:** disabling `/docs` is only a small hardening measure. It does **not** secure `/mcp` itself. For your GKE MCP service, the next important step is to put **API-key/JWT authentication on `/mcp`** and then expose it through **HTTPS Ingress**.

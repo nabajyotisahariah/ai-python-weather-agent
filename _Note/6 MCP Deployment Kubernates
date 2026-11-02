@@ -1,0 +1,662 @@
+Yes. For your current **FastMCP Streamable HTTP server**, I would deploy it separately from the main weather API:
+
+```text
+n8n / MCP Client
+       |
+       | HTTPS
+       v
+GKE Ingress
+       |
+       v
+Service: ai-python-weather-mcp
+       |
+       v
+MCP Pods (3 replicas)
+       |
+       v
+FastMCP / Uvicorn
+0.0.0.0:8100
+       |
+      /mcp
+```
+
+Your existing GKE Autopilot cluster is:
+
+* Cluster: `python-autopilot-cluster`
+* Region: `asia-south2`
+* Artifact Registry: `artifact-ai-python-weather-agent`
+* MCP application: `app/mcp/server.py`
+* MCP endpoint: `/mcp`
+* Container port: `8100`
+* Server command: `uvicorn app.mcp.server:app --host 0.0.0.0 --port 8100`
+
+GKE can pull images directly from Artifact Registry when the required permissions are configured. ([Google Cloud Documentation][1])
+
+## 1. MCP Dockerfile
+
+Create:
+
+```text
+Dockerfile.mcp
+```
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app ./app
+
+EXPOSE 8100
+
+CMD ["uvicorn", "app.mcp.server:app", "--host", "0.0.0.0", "--port", "8100"]
+```
+
+Your application structure can remain:
+
+```text
+ai-python-weather-agent/
+├── app/
+│   ├── mcp/
+│   │   └── server.py
+│   ├── tools/
+│   │   └── mcp/
+│   │       └── weather_tools.py
+│   └── ...
+├── requirements.txt
+├── Dockerfile.mcp
+└── helm-mcp/
+```
+
+Your current FastMCP application:
+
+```python
+app = mcp.streamable_http_app()
+```
+
+means the Kubernetes Service simply needs to forward traffic to port `8100`.
+
+---
+# 2.1 Build locally & Testing 
+    ```bash
+    docker build  -f Dockerfile.mcp -t ai-python-weather-mcp:1.0 .
+    docker build  -f Dockerfile.mcp --no-cache -t ai-python-weather-mcp:1.0 .
+     
+    Test Docker Appllication
+    docker run --rm --env-file .env -p 8100:8100 ai-python-weather-mcp:1.0 
+
+    Running in daemon mode
+    docker run -d --rm --env-file .env --name ai-python-weather-mcp -p 8100:8100 ai-python-weather-mcp:1.0 
+
+	```
+
+# 2.2 Build the MCP image & push to GCP Artifact Registry 
+
+Assuming your Artifact Registry repository is:
+
+```text
+artifact-ai-python-weather-agent
+```
+
+Build:
+    
+```bash
+docker build \
+  -f Dockerfile.mcp \
+  -t asia-south2-docker.pkg.dev/python-project-1st-sep/artifact-ai-python-weather-agent/ai-python-weather-mcp:1.0 .
+```
+
+Authenticate Docker:
+
+```bash
+gcloud auth configure-docker asia-south2-docker.pkg.dev
+```
+
+Push:
+
+```bash
+docker push \
+  asia-south2-docker.pkg.dev/python-project-1st-sep/artifact-ai-python-weather-agent/ai-python-weather-mcp:1.0
+```
+
+Artifact Registry is designed to store Docker images and integrate directly with GKE. ([Google Cloud Documentation][2])
+
+---
+
+# 3. Create Helm chart
+
+I recommend a separate chart:
+$ helm create helm-mcp
+Creating helm-mcp
+
+```text
+helm-mcp/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+    └── ingress.yaml
+```
+
+### `Chart.yaml`
+
+```yaml
+apiVersion: v2
+name: ai-python-weather-mcp
+description: Weather MCP Server
+type: application
+version: 0.1.0
+appVersion: "1.0"
+```
+
+---
+
+# 4. `values.yaml`
+
+```yaml
+replicaCount: 3
+
+image:
+  repository: asia-south2-docker.pkg.dev/python-project-1st-sep/artifact-ai-python-weather-agent/ai-python-weather-mcp
+  tag: "1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8100
+
+containerPort: 8100
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: weather-mcp.example.com
+```
+
+Replace:
+
+```text
+python-project-1st-sep
+```
+
+with your actual GCP python-project-1st-sep ID.
+
+---
+
+# 5. Deployment
+
+Create:
+
+```text
+helm-mcp/templates/deployment.yaml
+```
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-python-weather-mcp
+  labels:
+    app: ai-python-weather-mcp
+spec:
+  replicas: {{ .Values.replicaCount }}
+
+  selector:
+    matchLabels:
+      app: ai-python-weather-mcp
+
+  template:
+    metadata:
+      labels:
+        app: ai-python-weather-mcp
+
+    spec:
+      containers:
+        - name: ai-python-weather-mcp
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+
+          readinessProbe:
+            tcpSocket:
+              port: 8100
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            tcpSocket:
+              port: 8100
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+```
+
+---
+
+# 6. Kubernetes Service
+
+`helm-mcp/templates/service.yaml`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-python-weather-mcp
+spec:
+  type: {{ .Values.service.type }}
+
+  selector:
+    app: ai-python-weather-mcp
+
+  ports:
+    - protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+```
+
+This creates:
+
+```text
+ai-python-weather-mcp:80
+       |
+       v
+Pod:8100
+```
+
+---
+
+# 7. Ingress
+
+For your MCP endpoint, I would expose:
+
+```text
+https://weather-mcp.example.com/mcp
+```
+
+Create:
+
+`helm-mcp/templates/ingress.yaml`
+
+```yaml
+{{- if .Values.ingress.enabled }}
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: ai-python-weather-mcp
+
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+
+  rules:
+    - host: {{ .Values.ingress.host }}
+
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+
+            backend:
+              service:
+                name: ai-python-weather-mcp
+                port:
+                  number: 80
+
+{{- end }}
+```
+
+The important settings here are:
+
+```yaml
+proxy-read-timeout: "3600"
+proxy-send-timeout: "3600"
+proxy-buffering: "off"
+```
+
+because your MCP transport uses long-lived HTTP/SSE-style communication.
+
+---
+
+# 8. Connect to your GKE cluster
+
+```bash
+gcloud container clusters get-credentials \
+  python-autopilot-cluster \
+  --region asia-south2
+```
+
+Check:
+
+```bash
+kubectl get nodes
+```
+
+Then:
+
+```bash
+kubectl get pods
+```
+
+---
+
+# 9. Deploy Helm
+
+First validate:
+
+```bash
+helm lint ./helm-mcp
+```
+
+Render:
+
+```bash
+helm template ai-python-weather-mcp ./helm-mcp
+
+```
+
+Install:
+
+```bash
+helm install ai-python-weather-mcp ./helm-mcp
+or
+helm upgrade --install ai-python-weather-mcp ./helm-mcp
+```
+
+Check:
+
+```bash
+kubectl get pods
+
+kubectl delete pod [pod-name] 
+pod deleted from default namespace
+```
+
+You should see approximately:
+
+```text
+NAME                              READY   STATUS
+ai-python-weather-mcp-xxxxxxxxx-xxxxx    1/1     Running
+ai-python-weather-mcp-xxxxxxxxx-xxxxx    1/1     Running
+ai-python-weather-mcp-xxxxxxxxx-xxxxx    1/1     Running
+```
+
+Check service:
+
+```bash
+kubectl get svc ai-python-weather-mcp
+```
+
+And:
+
+```bash
+kubectl get ingress
+```
+
+GKE's normal deployment model is to apply Kubernetes resources describing the desired container/service state; Helm can package those resources and manage releases. ([Google Cloud Documentation][3])
+
+---
+
+# 10. Test MCP before exposing it publicly
+
+I strongly recommend testing the service internally first.
+
+Run:
+
+```bash
+$ kubectl get svc
+NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+ai-python-weather-mcp-service   ClusterIP   34.118.233.145   <none>        80/TCP    76s
+kubernetes                      ClusterIP   34.118.224.1     <none>        443/TCP   6d1h
+
+$ kubectl port-forward svc/ai-python-weather-mcp-service 8100:80
+Forwarding from 127.0.0.1:8100 -> 8100
+Forwarding from [::1]:8100 -> 8100
+```
+
+Then locally:
+
+```bash
+curl -i http://localhost:80/mcp
+```
+
+For initialization:
+
+```bash
+curl -i http://localhost:8100/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "test-client",
+        "version": "1.0"
+      }
+    }
+  }'
+```
+
+This is particularly important given the `mcp-session-id` issue you were testing locally.
+
+---
+
+# 11. Environment variables / `.env`
+
+**Do not copy `.env` into the Docker image.**
+
+Instead, use Kubernetes Secret.
+
+For example:
+
+```bash
+kubectl create secret generic ai-python-weather-mcp-secret \
+  --from-literal=WEATHER_API_URL="https://wttr.in" \
+  --from-literal=WEATHER_TIMEOUT_SECONDS="10"
+```
+
+Then modify Deployment:
+
+```yaml
+envFrom:
+  - secretRef:
+      name: ai-python-weather-mcp-secret
+```
+
+So:
+
+```yaml
+containers:
+  - name: ai-python-weather-mcp
+
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+    envFrom:
+      - secretRef:
+          name: ai-python-weather-mcp-secret
+```
+
+For production, I would eventually move these secrets to **Google Secret Manager + Workload Identity**, rather than maintaining secret values manually in Kubernetes.
+
+---
+
+# 12. One important architecture decision for your MCP
+
+For your current python-project-1st-sep, I would **not** combine MCP with your existing weather API deployment.
+
+Keep:
+
+```text
+                     ┌────────────────────────┐
+                     │      GKE Cluster       │
+                     │                        │
+                     │  ┌──────────────────┐  │
+Client ──────────────┼─►│ Weather API      │  │
+                     │  │ :8000            │  │
+                     │  └──────────────────┘  │
+                     │                        │
+                     │  ┌──────────────────┐  │
+n8n / MCP Client ────┼─►│ Weather MCP      │  │
+                     │  │ :8100 /mcp       │  │
+                     │  └──────────────────┘  │
+                     │                        │
+                     └────────────────────────┘
+```
+
+That gives you independent scaling:
+
+```text
+Weather API
+    replicas: 3
+
+MCP Server
+    replicas: 3
+```
+
+and later you can add:
+
+```text
+get_weather
+get_weather_forecast
+get_weather_alerts
+get_weather_history
+```
+
+without changing the main REST API.
+
+---
+
+## 13. Eventually your public endpoint
+
+Once DNS and TLS are configured:
+
+```text
+https://weather-mcp.yourdomain.com/mcp
+```
+
+Your n8n MCP configuration would point to:
+
+```text
+https://weather-mcp.yourdomain.com/mcp
+```
+
+rather than:
+
+```text
+http://localhost:8100/mcp
+```
+
+For production, put HTTPS in front of it and restrict access appropriately rather than exposing an unauthenticated MCP endpoint.
+
+---
+
+## 14. Recommended deployment structure for your python-project-1st-sep
+
+Given the GKE/Helm setup you've already built, I would organize the repository like this:
+
+```text
+ai-python-weather-agent/
+│
+├── app/
+│   ├── main.py
+│   │
+│   ├── mcp/
+│   │   └── server.py
+│   │
+│   ├── tools/
+│   │   └── mcp/
+│   │       └── weather_tools.py
+│   │
+│   ├── routes/
+│   ├── services/
+│   └── ...
+│
+├── Dockerfile
+├── Dockerfile.mcp
+├── requirements.txt
+│
+├── helm-config/
+│   └── ...                 # Existing weather API
+│
+└── helm-mcp/
+    ├── Chart.yaml
+    ├── values.yaml
+    └── templates/
+        ├── deployment.yaml
+        ├── service.yaml
+        └── ingress.yaml
+```
+
+This gives you a clean separation:
+
+**REST/Agent API**
+
+```text
+:8000
+```
+
+**MCP**
+
+```text
+:8100/mcp
+```
+
+and both can live in the same GKE cluster.
+
+Google also supports storing Helm charts as OCI artifacts in Artifact Registry if you later want to move from local `helm upgrade` deployments to a proper CI/CD flow. ([Google Cloud Documentation][4])
+
+### One thing I'd change for your current MCP
+
+Before deploying, I would make the MCP server expose a proper **health endpoint** separate from `/mcp`, for example:
+
+```text
+GET /health
+```
+
+Then Kubernetes can use:
+
+```yaml
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8100
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8100
+```
