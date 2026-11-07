@@ -534,6 +534,86 @@ def test_agent_report_cache_key_normalizes_query_to_alphanumeric_words() -> None
     )
 
 
+def test_semantic_hitl_skips_cache_for_unrecognized_weather_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run_test() -> None:
+        service = WeatherAgentService()
+        monkeypatch.setattr(
+            service.crewai_orchestrator,
+            "get_resolved_city",
+            AsyncMock(return_value=None),
+        )
+        monkeypatch.setattr(
+            service.crewai_orchestrator,
+            "run_weather_orchestrator_hitl",
+            AsyncMock(return_value=("Delhi is 25 C", "cache-key", False)),
+        )
+        initialize_cache = AsyncMock()
+        set_semantic_cache = AsyncMock()
+        monkeypatch.setattr(service, "_initialize_semantic_cache", initialize_cache)
+        monkeypatch.setattr(
+            service.semantic_cache,
+            "set_semantic_cache",
+            set_semantic_cache,
+        )
+
+        response = await service.process_weather_hitl_semantic(
+            "What is tempature of delhi?",
+            session_id="weather-session-1234",
+            user_id="default_user",
+        )
+
+        assert response.message == "Delhi is 25 C"
+        assert initialize_cache.await_count == 0
+        assert set_semantic_cache.await_count == 0
+
+    asyncio.run(run_test())
+
+
+def test_semantic_hitl_caches_using_city_resolved_by_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run_test() -> None:
+        service = WeatherAgentService()
+        monkeypatch.setattr(
+            service.crewai_orchestrator,
+            "get_resolved_city",
+            AsyncMock(side_effect=[None, "Delhi"]),
+        )
+        monkeypatch.setattr(
+            service.crewai_orchestrator,
+            "run_weather_orchestrator_hitl",
+            AsyncMock(return_value=("Delhi is 25 C", "cache-key", False)),
+        )
+        initialize_cache = AsyncMock()
+        set_semantic_cache = AsyncMock()
+        monkeypatch.setattr(service, "_initialize_semantic_cache", initialize_cache)
+        monkeypatch.setattr(
+            service.semantic_cache,
+            "set_semantic_cache",
+            set_semantic_cache,
+        )
+
+        response = await service.process_weather_hitl_semantic(
+            "What is temperature of Delhi?",
+            session_id="weather-session-1234",
+            user_id="default_user",
+        )
+
+        assert response.message == "Delhi is 25 C"
+        initialize_cache.assert_awaited_once()
+        set_semantic_cache.assert_awaited_once_with(
+            "What is temperature of Delhi?",
+            "Delhi is 25 C",
+            intent="current_weather",
+            location="Delhi",
+            scope="current",
+        )
+
+    asyncio.run(run_test())
+
+
 @pytest.mark.parametrize(
     ("method", "path", "kwargs", "expected_response"),
     [

@@ -1,0 +1,181 @@
+### 1. Restart your MCP server
+
+```bash
+ uvicorn app.weather-mcp:app --host 0.0.0.0 --port 8100  --reload 
+
+```
+
+### 2. Run `initialize` 
+
+In Git Bash:
+
+```bash
+curl -i http://localhost:8100/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "curl-client",
+        "version": "1.0"
+      }
+    }
+  }'
+```
+
+Look carefully at the response headers.
+
+You should get something similar to:
+
+```text
+HTTP/1.1 200 OK
+content-type: text/event-stream
+mcp-session-id: 123456789abcdef
+```
+
+The actual value might look like:
+
+```text
+mcp-session-id: 8f5c3c0c8e1e4...
+```
+
+**Copy that exact value.**
+
+---
+
+### 3. Call `tools/list`
+
+For example, if the server returned:
+
+```text
+mcp-session-id: 8f5c3c0c8e1e4
+```
+
+run:
+
+```bash
+curl -i http://localhost:8100/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -H "Mcp-Session-Id: 8f5c3c0c8e1e4" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
+  }'
+```
+
+You should see your registered tools.
+
+With your current `server.py`, you should have:
+
+```text
+get_weather
+get_weather_forecast
+```
+
+because you have:
+
+```python
+mcp.tool()(get_weather)
+mcp.tool()(get_weather_forecast)
+```
+
+---
+
+### 4. Call `get_weather`
+
+Using the **same session ID**:
+
+```bash
+curl -i http://localhost:8100/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-06-18" \
+  -H "Mcp-Session-Id: 8f5c3c0c8e1e4" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "get_weather",
+      "arguments": {
+        "city": "Delhi"
+      }
+    }
+  }'
+```
+
+You should then get something similar to:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "..."
+      }
+    ]
+  }
+}
+```
+
+The actual weather data will come from your existing:
+
+```text
+get_weather()
+       ↓
+WeatherService
+       ↓
+wttr.in
+```
+
+### Your error explained
+
+You received:
+
+```json
+{
+  "code": -32600,
+  "message": "Session not found"
+}
+```
+
+So:
+
+```text
+HTTP request
+     ↓
+localhost:8100
+     ↓
+/mcp
+     ↓
+MCP server ✓
+     ↓
+Session validation
+     ↓
+abc123... ✗
+```
+
+It **does not indicate a Uvicorn/ASGI problem anymore**. Your previous:
+
+```text
+TypeError: 'FastMCP' object is not callable
+```
+
+has been fixed.
+
+**Important:** don't restart the server between `initialize`, `tools/list`, and `tools/call`, because restarting it can invalidate the in-memory MCP session.
+
+If you paste the **complete output of your `initialize` curl command**, I can give you the exact `tools/list` and `tools/call` commands for your server.
