@@ -2,9 +2,9 @@
 
 FastAPI service for current weather data, AI-generated weather summaries, FAQ answers, and MCP tool exposure. Weather data is retrieved from [wttr.in](https://wttr.in), while AI summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
-> **🚀 New Feature: GCP Cloud Run & App Engine Deployment**
-> - Application deployment via GCP Cloud Run ([README_Deploy_Cloud_Run.md](README_Deploy_Cloud_Run.md))
-> - Application deployment via GCP App Engine ([README-Deploy-APP-Engine.md](README-Deploy-APP-Engine.md))
+> **🚀 New Features: Semantic Caching, GCP Cloud Run & App Engine Deployment**
+> - Redis Stack-backed semantic caching for HITL weather queries
+
 
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
@@ -33,6 +33,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - Human-in-the-loop (HITL) weather requests that ask for a missing city and flag consequential bulk-notification requests for approval
 - **Model Context Protocol (FastMCP)** server capability
 - Redis caching for weather data and generated reports
+- Redis vector-based semantic caching for eligible HITL weather queries
 - Redis-backed session context for HITL clarification and pending approval records
 - Health-check endpoint
 - Pydantic request and response validation (null fields are excluded from JSON responses)
@@ -47,7 +48,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 ## Requirements
 
 - Python 3.11 or newer
-- Redis 7 or newer for caching
+- Redis 7 or newer for standard caching; Redis Stack with the Search module for semantic caching
 - An OpenAI API key for CrewAI, LangGraph, and AutoGen
 - A Google API key for Google ADK
 - Langfuse credentials for optional observability
@@ -141,10 +142,10 @@ This script reads `data/faq/weather.txt`, splits the text, creates embeddings us
 
 ## Start Redis
 
-The Compose file starts Redis only:
+The Compose file starts Redis Stack, which includes the Search module required by semantic caching:
 
 ```powershell
-docker compose up -d redis
+docker compose up -d redis-stack
 ```
 
 Stop Redis when it is no longer needed:
@@ -158,6 +159,39 @@ The API can also run without Redis. In that case, requests bypass the cache and 
 The application shares one `AsyncRedisCache` Singleton instance across its services and
 orchestrators. It creates the Redis client once when caching is enabled; when
 caching is disabled, cache reads return no result and writes are skipped.
+
+### Semantic caching
+
+The semantic cache is available on `POST /api/v1/weather/agent/semantic/hitl`. It uses
+OpenAI `text-embedding-3-small` embeddings and Redis Stack vector search to reuse
+responses for semantically similar requests. It is separate from the exact-query
+agent report cache and the standard `/api/v1/weather/agent/hitl` route.
+
+To enable it locally, start the `redis-stack` Compose service and set these values in
+`.env` (the Compose service publishes Redis on port `6380`):
+
+```env
+OPENAI_API_KEY=your-openai-api-key
+REDIS_ENABLED=true
+REDIS_URL=redis://localhost:6380/0
+```
+
+For example, send a semantic-cache request with a session ID:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent/semantic/hitl" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"query":"What is the weather in Noida today?","session_id":"weather-session-123"}'
+```
+
+The semantic endpoint also uses Redis for HITL session context. It checks the cache
+only for recognized current-weather, forecast, or air-quality questions when a city
+has been resolved and matches the query. A candidate must match the request's intent,
+city, units, and current/forecast scope, and have cosine similarity of at least
+`0.92`. Entries expire after 24 hours by default. Cache hits return
+`"isSemanticCached": true`; misses are handled by the agent and eligible responses
+are stored for later requests.
 
 ## Run the API
 
@@ -382,7 +416,7 @@ Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent/langgraph" `
 
 ### Human-in-the-loop requests
 
-Use `POST /api/v1/weather/agent/hitl` for requests that may need clarification or human approval. AQI and air-pollution questions are handled by the WAQI specialist; configure `WAQI_API_TOKEN` in `.env` and send the city in the query. Configure Redis first and send a `query` plus a `session_id` with at least six characters. Reuse the session ID when answering a clarification:
+Use `POST /api/v1/weather/agent/hitl` for requests that may need clarification or human approval. Use `POST /api/v1/weather/agent/semantic/hitl` to enable the semantic-cache flow described above. AQI and air-pollution questions are handled by the WAQI specialist; configure `WAQI_API_TOKEN` in `.env` and send the city in the query. Configure Redis first and send a `query` plus a `session_id` with at least six characters. Reuse the session ID when answering a clarification:
 
 ```powershell
 Invoke-RestMethod "http://localhost:8000/api/v1/weather/agent/hitl" `
