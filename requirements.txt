@@ -18,7 +18,6 @@ pytest-asyncio
 #redis
 langfuse==4.15.6
 mcp[cli]
-uuid4
 redis>=5 
 openai 
 numpy
