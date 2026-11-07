@@ -63,7 +63,7 @@ class AgentResponse(BaseModel):
     #                ] = Field(default="success", description="Status of the response")  
     status: Status = Field (default="success", description="Status of the response") 
     message: str | None = Field(default=None, max_length=2000)
-    data: WeatherData | list[ForecastDay] | ApprovalData | None = None
+    data: WeatherData | list[ForecastDay] | ApprovalData | str | None = None
     isCached: bool = Field(
         default=False,
         strict=True,

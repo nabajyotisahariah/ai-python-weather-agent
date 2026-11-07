@@ -27,13 +27,13 @@ _LOCATION_SUFFIXES = {
     "currently",
 }
 _WEATHER_QUERY_PATTERN = re.compile(
-    r"\b(?:weather|rain(?:y|ing|fall)?|umbrella|forecast|temperatures?|"
+    r"\b(?:weather|rain(?:y|ing|fall)?|umbrella|forecast|temperature|temperatures?|"
     r"jackets?|coats?|snow(?:y|ing)?|sunny|hot|cold|wind(?:y|s)?|"
     r"storm(?:y|s)?|cloud(?:y|s)?|aqi|air quality|pollution|pollutant|smog)\b",
     re.IGNORECASE,
 )
 _AIR_QUALITY_PATTERN = re.compile(
-    r"\b(?:aqi|air quality|pollution|pollutant|smog)\b",
+    r"\b(?:aqi|air quality|pollution|pollutant|smog|mask)\b",
     re.IGNORECASE,
 )
 _FORECAST_PATTERN = re.compile(
@@ -57,11 +57,14 @@ def _semantic_cache_dimensions(query: str) -> tuple[str, str] | None:
 
 
 def _query_matches_resolved_city(query: str, resolved_city: str) -> bool:
+    print("query: ", query, " resolved_city: ", resolved_city)
     match = _LOCATION_QUERY_PATTERN.search(query)
+    print("match: ", match)
     if match is None:
         return True
 
     location_parts = match.group(1).casefold().split()
+    print("location_parts: ", location_parts," _LOCATION_SUFFIXES : ", _LOCATION_SUFFIXES)
     while location_parts and location_parts[-1] in _LOCATION_SUFFIXES:
         location_parts.pop()
 
@@ -263,7 +266,7 @@ class WeatherAgentService(WeatherAgentInterface):
         if (
             cache_dimensions is not None
             and resolved_city is not None
-           # and location_matches
+            and location_matches
         ):
             await self._initialize_semantic_cache()
             intent, scope = cache_dimensions
@@ -284,8 +287,7 @@ class WeatherAgentService(WeatherAgentInterface):
                 return AgentResponse(
                     status=Status.SUCCESS,
                     message=cached_response,
-                    data=None,
-                    isCached=False,
+                    data="intent: {}, location: {}, scope: {}".format(intent, resolved_city, scope) if cache_dimensions else None,
                     isSemanticCached=True,
                 )
 
@@ -297,39 +299,28 @@ class WeatherAgentService(WeatherAgentInterface):
             )
         )
 
-        # if cache_dimensions is not None:
-        #     cache_city = await self.crewai_orchestrator.get_resolved_city(
-        #         session_id,
-        #         user_id,
-        #     )
-        #     if (
-        #         cache_city is not None
-        #         and _query_matches_resolved_city(query, cache_city)
-        #     ):
-        #         await self._initialize_semantic_cache()
-        #         intent, scope = cache_dimensions
-        #         await self.semantic_cache.set_semantic_cache(
-        #             query,
-        #             str(response),
-        #             intent=intent,
-        #             location=cache_city,
-        #             scope=scope,
-        #         )
-
-        await self._initialize_semantic_cache()
-        intent, scope = cache_dimensions
-        await self.semantic_cache.set_semantic_cache(
-            query,
-            str(response),
-            intent=intent,
-            location=resolved_city,
-            scope=scope,
-        )
+        if cache_dimensions is not None:
+            cache_city = await self.crewai_orchestrator.get_resolved_city(
+                session_id,
+                user_id,
+            )
+            if (
+                cache_city is not None
+                and _query_matches_resolved_city(query, cache_city)
+            ):
+                await self._initialize_semantic_cache()
+                intent, scope = cache_dimensions
+                await self.semantic_cache.set_semantic_cache(
+                    query,
+                    str(response),
+                    intent=intent,
+                    location=cache_city,
+                    scope=scope,
+                )
 
         return AgentResponse(
             status=Status.SUCCESS,
             message=str(response),
-            data=None,
-            cacheKey=cache_key,
+            data="intent: {}, location: {}, scope: {}".format(intent, cache_city, scope) if cache_dimensions else None,
             isSemanticCached=False,
         )

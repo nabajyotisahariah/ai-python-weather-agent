@@ -55,6 +55,13 @@ gcloud redis clusters create ai-weather-redis \
   --network=projects/PROJECT_ID/global/networks/default \
   --shard-count=3 \
   --replica-count=1
+
+
+gcloud redis clusters create ai-weather-redis \
+  --region=asia-south2 \
+  --network=projects/weather-project-prod-511603/global/networks/default \
+  --shard-count=1 \
+  --replica-count=1
 ```
 
 Enabled IAM ROle

@@ -119,11 +119,13 @@ class SemanticCache:
                 "=>[KNN 5 @embedding $vec AS distance]"
             )
             .sort_by("distance")
-            .return_fields("response", "distance")
+            #.return_fields("response", "distance")
+            .return_fields("response", "distance", "query", "intent", "location_key")
             .paging(0, 5)
             .dialect(2)
         )
-
+        print(f"Constructed query: {query.query_string}")
+        
         results = await self.redis.ft(self.INDEX_NAME).search(
             query,
             query_params={"vec": vector.tobytes()},

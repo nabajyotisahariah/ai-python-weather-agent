@@ -84,11 +84,11 @@ class CrewAIOrchestrator:
         query_str = query.casefold().replace(' ', '_')
         cache_key = f"weather:orchestrator:hitl:{query_str}:{session_id}:{user_id}"
         
-        cached_result = await self.redis.get(cache_key)      
+        #cached_result = await self.redis.get(cache_key)      
         
-        if cached_result:
-            self.logger.info("Cache hit for orchestrator query: %s", query)
-            return [cached_result, cache_key, True]
+        # if cached_result:
+        #     self.logger.info("Cache hit for orchestrator query: %s", query)
+        #     return [cached_result, cache_key, True]
 
         self.logger.info("Executing run_weather_orchestrator with query: %s", query)
 
@@ -96,7 +96,7 @@ class CrewAIOrchestrator:
         cached_context = await self.redis_context.get_history(session_id, user_id)
 
         # Log the cached context for debugging
-        print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
+        #print(f"Cached context for session_id {session_id} and user_id {user_id}: {cached_context}")
         
         resolved_cities: list[str] = []
         agent: Agent = create_weather_orchestrator(resolved_cities.append)
@@ -123,18 +123,9 @@ class CrewAIOrchestrator:
                 user_id,
                 resolved_cities[-1],
             )
-
-        #response = str(result.raw or "")        
-        # has_temperature = bool(
-        #     re.search(r"-?\d+(?:\.\d+)?\s*°[CF]\b", response)
-        # )
-
-        # Determine whether the result contains a recognizable
-        # weather-related response.
-        #if has_temperature:# or has_weather_keyword:
          
         # Cache the result
-        await self.redis.set(cache_key,  result.raw, ex=3600)
+        #await self.redis.set(cache_key,  result.raw, ex=3600)
 
         # Update the context with the latest query and result 
         await self.set_user_hitl(query, result.raw, session_id, user_id)
