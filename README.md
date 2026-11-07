@@ -13,7 +13,7 @@ The API uses Redis as an optional cache and exposes OpenAPI documentation throug
 - [README-FAQ.md](README-FAQ.md) — FAQ agent and FAISS vector database setup
 - [README-MCP.md](README-MCP.md) — Model Context Protocol (MCP) server usage
 - [README-TEST.md](README-TEST.md) — testing notes and validation steps
-- [_Note/](./_Note) — deployment and operational notes
+
 
 ## Quick Start
 
@@ -161,6 +161,8 @@ orchestrators. It creates the Redis client once when caching is enabled; when
 caching is disabled, cache reads return no result and writes are skipped.
 
 ### Semantic caching
+
+![Semantic caching flow in a multi-agent AI system](./_Note/semantic_caching.png)
 
 The semantic cache is available on `POST /api/v1/weather/agent/semantic/hitl`. It uses
 OpenAI `text-embedding-3-small` embeddings and Redis Stack vector search to reuse
