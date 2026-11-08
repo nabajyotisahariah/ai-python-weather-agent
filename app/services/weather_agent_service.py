@@ -26,6 +26,7 @@ _LOCATION_SUFFIXES = {
     "tonight",
     "currently",
 }
+_LOCATION_BOUNDARY_PUNCTUATION = ".,!?;:()[]{}\"'"
 _WEATHER_QUERY_PATTERN = re.compile(
     r"\b(?:weather|rain(?:y|ing|fall)?|umbrella|forecast|temperature|temperatures?|"
     r"jackets?|coats?|snow(?:y|ing)?|sunny|hot|cold|wind(?:y|s)?|"
@@ -57,18 +58,34 @@ def _semantic_cache_dimensions(query: str) -> tuple[str, str] | None:
 
 
 def _query_matches_resolved_city(query: str, resolved_city: str) -> bool:
-    print("query: ", query, " resolved_city: ", resolved_city)
+
+    #print("_query_matches_resolved_city query: ", query, " resolved_city: ", resolved_city)
+
     match = _LOCATION_QUERY_PATTERN.search(query)
-    print("match: ", match)
+    #print("_query_matches_resolved_city match: ", match)
+
     if match is None:
         return True
 
-    location_parts = match.group(1).casefold().split()
-    print("location_parts: ", location_parts," _LOCATION_SUFFIXES : ", _LOCATION_SUFFIXES)
+    location_parts = [
+        part.strip(_LOCATION_BOUNDARY_PUNCTUATION).casefold()
+        for part in match.group(1).split()
+    ]
+    location_parts = [part for part in location_parts if part]
+    if not location_parts:
+        return False
+
+    #print("_query_matches_resolved_city location_parts: ", location_parts, " _LOCATION_SUFFIXES : ", _LOCATION_SUFFIXES)
+
     while location_parts and location_parts[-1] in _LOCATION_SUFFIXES:
         location_parts.pop()
 
-    return " ".join(location_parts) == resolved_city.casefold().strip()
+    normalized_city = " ".join(
+        part.strip(_LOCATION_BOUNDARY_PUNCTUATION).casefold()
+        for part in resolved_city.split()
+    )
+    #print("_query_matches_resolved_city location_parts after pop: ", location_parts," resolved_city.casefold().strip(): ", normalized_city)
+    return " ".join(location_parts) == normalized_city
 
 
 class WeatherAgentService(WeatherAgentInterface):
@@ -256,6 +273,8 @@ class WeatherAgentService(WeatherAgentInterface):
 
         cache_dimensions = _semantic_cache_dimensions(query)
         print("process_weather_hitl_semantic cache_dimensions: ", cache_dimensions)
+        if cache_dimensions is not None:
+            intent, scope = cache_dimensions
 
         location_matches = (
             resolved_city is not None
@@ -269,7 +288,6 @@ class WeatherAgentService(WeatherAgentInterface):
             and location_matches
         ):
             await self._initialize_semantic_cache()
-            intent, scope = cache_dimensions
             cached_response = await self.semantic_cache.get_semantic_cache(
                 query,
                 intent=intent,
@@ -309,7 +327,6 @@ class WeatherAgentService(WeatherAgentInterface):
                 and _query_matches_resolved_city(query, cache_city)
             ):
                 await self._initialize_semantic_cache()
-                intent, scope = cache_dimensions
                 await self.semantic_cache.set_semantic_cache(
                     query,
                     str(response),
