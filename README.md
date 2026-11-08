@@ -8,7 +8,7 @@ FastAPI service for current weather data, AI-generated weather summaries, FAQ an
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
 ## Architecture
-![Semantic caching flow in a multi-agent AI system](./_Note/semantic_caching.png)
+![Semantic caching flow in a multi-agent AI system](./_Note/image/Architecture.png)
 
 ## Documentation
 
