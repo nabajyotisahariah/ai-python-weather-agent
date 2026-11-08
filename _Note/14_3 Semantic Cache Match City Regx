@@ -1,0 +1,163 @@
+This function checks whether a city mentioned in a user's query matches the city that has already been resolved by your application.
+
+In simple terms, it prevents your Weather AI Agent from using a resolved city when the user's query explicitly mentions a different city.
+
+For example:
+- User query: "What's the weather in New Delhi?"
+- Resolved city: "New Delhi"
+- Result: True
+But if the resolved city is "Mumbai", the result is False.
+
+1. Function definition
+def _query_matches_resolved_city(query: str, resolved_city: str) -> bool:
+
+It accepts two arguments:
+- query: Original user question.
+- resolved_city: City identified by your location resolver.
+It returns a Boolean: True or False.
+
+2. Extract the location from the query
+match = _LOCATION_QUERY_PATTERN.search(query)
+
+This uses a regular expression to find a location in the user's query.
+
+For example, suppose:
+query = "What is the weather in New Delhi?"
+
+The regex might extract:
+match.group(1)  # "New Delhi"
+
+The exact extraction depends on how _LOCATION_QUERY_PATTERN is defined.
+if match is None:    return True
+
+If no location is found in the query, the function returns True.
+
+Why?
+
+Because the user hasn't explicitly mentioned another city, so the already resolved city is accepted.
+
+3. Normalize the extracted location
+    location_parts = [    
+        part.strip(_LOCATION_BOUNDARY_PUNCTUATION).casefold()    
+        for part in match.group(1).split()
+    ]
+
+
+    This performs three operations:
+    1. split() – Splits the city into individual words.
+    2. strip() – Removes specified punctuation from the beginning and end of each word.
+    3. casefold() – Converts text into a normalized lowercase form for case-insensitive 
+    
+    comparison.
+    Example:
+        "NEW Delhi,"
+
+        Becomes:
+            ["new", "delhi"]
+
+    Next:
+        location_parts = [part for part in location_parts if part]
+
+    Removes empty strings from the list.
+
+4. Handle empty location values
+
+    if not location_parts:   
+         return False
+
+    If the extracted location contains no meaningful words, the function returns False.
+
+    This prevents an invalid or empty location from being treated as a valid match.
+
+5. Remove unnecessary location suffixes
+
+    while location_parts and location_parts[-1] in _LOCATION_SUFFIXES:    
+        location_parts.pop()
+
+    This is an important part of the implementation.
+
+    It removes recognized suffixes from the end of the extracted location.
+
+    For example,
+     assuming _LOCATION_SUFFIXES contains "city" and "india":
+    location_parts = ["new", "delhi", "city"]
+
+    After processing:
+    ["new", "delhi"]
+
+    The while loop continues removing suffixes as long as the last word belongs to _LOCATION_SUFFIXES.
+
+    This allows variations such as:
+    - New Delhi
+    - New Delhi City
+    - New Delhi, India
+    to be normalized before comparison, depending on your configured suffix list.
+
+6. Normalize the resolved city
+    normalized_city = " ".join(    
+                    part.strip(_LOCATION_BOUNDARY_PUNCTUATION).casefold()  
+                    for part in resolved_city.split())
+
+    The resolved city goes through similar normalization.
+
+    Example:
+    resolved_city = "NEW DELHI"
+
+    Becomes:
+    normalized_city = "new delhi"
+
+    This ensures that capitalization and boundary punctuation don't affect the comparison.
+
+7. Compare both locations
+
+    return " ".join(location_parts) == normalized_city
+
+    Finally, the function joins the extracted location words and compares them with the normalized resolved city.
+
+    If both are identical, it returns True; otherwise, False.
+
+8. Practical execution examples
+    Assume:
+    _LOCATION_SUFFIXES = {"city", "india"}_LOCATION_BOUNDARY_PUNCTUATION = ".,!?;:"
+
+    And the regex extracts the location following phrases such as in or weather for.
+    User query	Resolved city	Result
+    Weather in New Delhi	New Delhi	True
+    Weather in NEW DELHI	New Delhi	True
+    Weather in New Delhi City	New Delhi	True
+    Weather in Mumbai	New Delhi	False
+    What's the weather today?	New Delhi	True
+
+9. Why this matters in your Multi-Agent Weather AI architecture
+    Consider this scenario:
+    User Query
+
+    "What is the weather in Mumbai?"
+
+    Location Resolver
+    Resolved city: New Delhi
+
+
+    City Validation
+
+        _query_matches_resolved_city()
+        False – Location mismatch
+
+    Prevent incorrect city-specific cache reuse
+    Resolve Mumbai correctly before retrieving weather data.
+
+
+    This is particularly important for Semantic Caching with Redis.
+
+    Imagine a user asks:
+    1. "What's the weather in New Delhi?"
+    2. "Tell me today's temperature in Mumbai."
+    Although the queries might have some semantic similarity, their locations are different.
+
+    Your application should not return New Delhi's cached weather response for Mumbai.
+
+    My architectural recommendation: Use this function as a location-validation safeguard before semantic cache lookup. Combine it with metadata filtering on location_key, intent, units, and scope in Redis Vector Search.
+
+    One limitation to keep in mind: this function performs exact normalized city-name matching, not geographical equivalence. For example, aliases such as "Bangalore" and "Bengaluru" will not match unless your location resolver normalizes both to the same canonical city.
+
+    That distinction is important when building a reliable production-grade multi-agent weather system.
