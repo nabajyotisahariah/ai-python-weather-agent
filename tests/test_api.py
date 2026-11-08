@@ -14,7 +14,10 @@ from app.services.weather_service import (
     WeatherProviderError,
     WeatherService,
 )
-from app.services.weather_agent_service import WeatherAgentService
+from app.services.weather_agent_service import (
+    WeatherAgentService,
+    _query_matches_resolved_city,
+)
 
 
 class StubWeatherService:
@@ -50,6 +53,26 @@ class FailingWeatherService(StubWeatherService):
 
     async def get_autogen_weather_report(self, city: str) -> dict[str, str]:
         raise WeatherProviderError("Weather assistant unavailable")
+
+
+@pytest.mark.parametrize(
+    ("query", "resolved_city", "expected"),
+    [
+        ("Tell me today's weather in Noida.", "Noida", True),
+        ("What is the weather in Noida?", "Noida", True),
+        ("Weather in Noida, today", "Noida", True),
+        ("Weather in Noida. today", "Noida", True),
+        ("Weather in St. Paul.", "St. Paul", True),
+        ("Weather in Noida.", "Delhi", False),
+    ],
+)
+def test_query_matches_resolved_city_ignores_boundary_punctuation(
+    query: str,
+    resolved_city: str,
+    expected: bool,
+) -> None:
+    assert _query_matches_resolved_city(query, resolved_city) is expected
+
 
 class StubWeatherForecastService:
     async def get_weather_forecast(self, city: str, days: int = 3) -> dict[str, object]:
@@ -567,6 +590,36 @@ def test_semantic_hitl_skips_cache_for_unrecognized_weather_query(
         assert response.message == "Delhi is 25 C"
         assert initialize_cache.await_count == 0
         assert set_semantic_cache.await_count == 0
+
+    asyncio.run(run_test())
+
+
+def test_semantic_hitl_handles_unresolved_city(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run_test() -> None:
+        service = WeatherAgentService()
+        monkeypatch.setattr(
+            service.crewai_orchestrator,
+            "get_resolved_city",
+            AsyncMock(return_value=None),
+        )
+        monkeypatch.setattr(
+            service.crewai_orchestrator,
+            "run_weather_orchestrator_hitl",
+            AsyncMock(return_value=("Noida is 25 C", "cache-key", False)),
+        )
+
+        response = await service.process_weather_hitl_semantic(
+            "Tell me today's weather in Noida.",
+            session_id="weather-session-1240",
+            user_id="default_user",
+        )
+
+        assert response.message == "Noida is 25 C"
+        assert response.data == (
+            "intent: current_weather, location: None, scope: current"
+        )
 
     asyncio.run(run_test())
 
