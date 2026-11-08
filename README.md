@@ -3,8 +3,9 @@
 FastAPI service for current weather data, AI-generated weather summaries, FAQ answers, and MCP tool exposure. Weather data is retrieved from [wttr.in](https://wttr.in), while AI summaries can be generated with CrewAI, LangGraph, AutoGen, or Google ADK.
 
 > **🚀 New Features: Semantic Caching, GCP Cloud Run & App Engine Deployment**
-> - Redis Stack-backed semantic caching for HITL weather queries
+> - Redis Stack-backed semantic caching for HITL (Human in the Loop) weather queries
 
+![Semantic caching flow in a multi-agent AI system](./_Note/semantic_caching.png)
 
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
 
@@ -172,7 +173,6 @@ caching is disabled, cache reads return no result and writes are skipped.
 
 ### Semantic caching
 
-![Semantic caching flow in a multi-agent AI system](./_Note/semantic_caching.png)
 
 The semantic cache is available on `POST /api/v1/weather/agent/semantic/hitl`. It uses
 OpenAI `text-embedding-3-small` embeddings and Redis Stack vector search to reuse
