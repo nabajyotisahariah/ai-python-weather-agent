@@ -90,27 +90,37 @@ The app reads runtime settings from `app/config.py` using Pydantic settings. The
 Minimal local configuration:
 
 ```env
-environment=development
-OPENAI_API_KEY=your-openai-api-key
+environment=development|production
+APP_NAME=Weather AI API
+APP_VERSION=1.0.0
+
+GOOGLE_CLOUD_PROJECT=workspace-prod-511311
+DEPLOY_TYPE=app-engine
+
+CREWAI_TRACING_ENABLED=false
+OPENAI_API_KEY=<<OpenAI Key>>
 OPENAI_API_MODEL=gpt-4o-mini
-GOOGLE_API_KEY=your-google-api-key
-GOOGLE_ADK_MODEL=gemini-2.0-flash
+GOOGLE_API_KEY=<<Google API Key>>
+GOOGLE_ADK_MODEL=gemini-3.5-flash-lite
+
+VECTOR_STORE=faiss
+
 WEATHER_API_URL=https://wttr.in
 WEATHER_TIMEOUT_SECONDS=10
-WAQI_API_TOKEN=your-waqi-api-token
-REDIS_ENABLED=false
-REDIS_URL=redis://localhost:6379/0
-REDIS_CACHE_TTL_SECONDS=3600
-LANGFUSE_PUBLIC_KEY=your-langfuse-public-key
-LANGFUSE_SECRET_KEY=your-langfuse-secret-key
-LANGFUSE_BASE_URL=https://cloud.langfuse.com
-VECTOR_STORE=faiss
+WAQI_API_TOKEN=<<WAQI API Token>> #https://aqicn.org/
+
+REDIS_ENABLED=True
+REDIS_URL=redis://localhost:6380/0  #Semantic Caching using Redis 
+
+LANGFUSE_SECRET_KEY=<<Langfuse Secret Key>>
+LANGFUSE_PUBLIC_KEY=<<Langfuse Public Key>>
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
 ```
 
 Required settings:
 
 - `OPENAI_API_KEY` is required in development and production.
-- `WAQI_API_TOKEN` is required only for AQI requests sent through `/api/v1/weather/agent`.
+- `WAQI_API_TOKEN` is required only for AQI requests sent through `/api/v1/weather/agent` from https://aqicn.org/.
 - `GOOGLE_API_KEY` is required in production when the Google ADK path is used.
 - `REDIS_URL` is only required when `REDIS_ENABLED=true` and Redis is running remotely.
 - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are optional; they enable Langfuse telemetry when both are present.

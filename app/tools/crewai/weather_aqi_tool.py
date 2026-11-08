@@ -16,6 +16,7 @@ def fetch_air_quality(city: str) -> str:
         raise RuntimeError("WAQI_API_TOKEN is not configured")
 
     url = f"{settings.waqi_api_url.rstrip('/')}/feed/{quote(city, safe='')}/"
+    #print(f"Fetching air quality data from WAQI API for city: {city} (URL: {url})")
     try:
         response = requests.get(
             url,
