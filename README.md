@@ -5,9 +5,10 @@ FastAPI service for current weather data, AI-generated weather summaries, FAQ an
 > **🚀 New Features: Semantic Caching, GCP Cloud Run & App Engine Deployment**
 > - Redis Stack-backed semantic caching for HITL (Human in the Loop) weather queries
 
-![Semantic caching flow in a multi-agent AI system](./_Note/semantic_caching.png)
-
 The API uses Redis as an optional cache and exposes OpenAPI documentation through FastAPI.
+
+## Architecture
+![Semantic caching flow in a multi-agent AI system](./_Note/semantic_caching.png)
 
 ## Documentation
 
